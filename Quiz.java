@@ -23,6 +23,7 @@ public class Quiz implements ActionListener{
 	private File _wordList;
 	private File _failedList = new File(".failedlist");
 	private File _faultedList = new File(".faultedlist");
+	private ArrayList<ArrayList<String>> _lists;
 	private ArrayList<String> _words; 
 	private ArrayList<Integer> _previousWords;
 	private QuizType _quizType; 
@@ -33,46 +34,85 @@ public class Quiz implements ActionListener{
 	 * Initializes most private fields, depending on which quiz type is needed.
 	 * @param quizType
 	 */
-	public Quiz(QuizType quizType) {
+	public Quiz(QuizType quizType, int level) {
 		_stats = new Statistics();
 		_wordCount = 0;
 		_previousWords = new ArrayList<>();
+		_words = new ArrayList<>();
+		
 		if (quizType.getQuizType().equals(QuizType.NEW.getQuizType())) {
-			_wordList = new File("wordlist");
+			_wordList = new File("NZCER-spelling-lists.txt");
 		} else {
 			_wordList = new File(".failedlist");
 		}
+		
 		_quizType = quizType;
+		
 		if (!_wordList.exists()) {
 			try {
 				_wordList.createNewFile();
+				initializeList(_wordList);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
-		getWords();
-		_totalWords = Math.min(_words.size(), 3);
+		_lists = getWords(_wordList);
+		selectWords(level);
+		_totalWords = Math.min(_words.size(), 10);
 		if (_totalWords == 0) {
 			JOptionPane.showMessageDialog(null, "Not enough words to make a quiz!", "Uh oh!", JOptionPane.ERROR_MESSAGE);
+		}
+	}
+	
+	private void initializeList(File list) {
+		try {
+			BufferedWriter bw = new BufferedWriter(new FileWriter(list.getAbsoluteFile()));
+			
+			for (int i = 0; i < numOfLevels(); i++) {
+				bw.write("%Level " + (i + 1) + "\n");
+			}
+			
+			bw.close();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	private void selectWords(int level) {
+		ArrayList<String> tempList = _lists.get(level - 1);
+		int pos = 0;
+		for (int i = 0; i < 10; i++) {
+			while (_words.contains(tempList.get(pos = (int)(Math.random() * tempList.size())))) { }
+			_words.add(tempList.get(pos));
 		}
 	}
 	
 	/**
 	 * Grabs words from file and stores in field.
 	 */
-	private void getWords() {
+	private ArrayList<ArrayList<String>> getWords(File wordList) {
 		BufferedReader br = null;
-		_words = new ArrayList<>();
+		ArrayList<ArrayList<String>> lists = new ArrayList<>();
 		
 		try {
 			String line;
 			
-			br = new BufferedReader(new FileReader(_wordList.getAbsoluteFile()));
+			br = new BufferedReader(new FileReader(wordList.getAbsoluteFile()));
+			
+			ArrayList<String> currentList = new ArrayList<>();
 			
 			while ((line = br.readLine()) != null) {
 				//do stuff with each line
-				_words.add(line);
+				
+				if (line.startsWith("%")) {
+					currentList = new ArrayList<>();
+					lists.add(currentList);
+				} else {
+					currentList.add(line);
+				}
 			}
 		} catch (IOException ex) {
 			ex.printStackTrace();
@@ -83,6 +123,8 @@ public class Quiz implements ActionListener{
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		
+		return lists;
 	}
 
 	/**
@@ -93,15 +135,9 @@ public class Quiz implements ActionListener{
 		_wordCount++;
 		if (_wordCount <= _totalWords) {
 			_attempts = 0;
-			int pos = _words.size();
 
-			// makes sure no words are repeated - be careful of infinite loops lol
-			while(_previousWords.contains(pos = (int)(Math.random() * _words.size()))) {
-				//fun n games
-			}
-
-			_previousWords.add(pos);
-			sayWord(_words.get(pos));
+			_previousWords.add(_wordCount - 1);
+			sayWord(_words.get(_wordCount - 1));
 			return true;
 		} else {
 			sayWord("Quiz is finished.");
@@ -170,7 +206,7 @@ public class Quiz implements ActionListener{
 			String userWord = trimSpaces(e.getActionCommand());
 			_attempts++;
 			// if the user spells word correctly
-			if (userWord.toLowerCase().equals(_words.get(_previousWords.get(_previousWords.size() - 1)))) {
+			if (userWord.toLowerCase().equals(_words.get(_previousWords.get(_previousWords.size() - 1)).toLowerCase())) {
 				sayWord("Correct!");
 				if (_attempts == 2) { // add and remove from appropriate lists, add stats, all depending on number of attempts so far
 					addToList(_faultedList);
@@ -333,5 +369,13 @@ public class Quiz implements ActionListener{
 			}
 		}
 		return true;
+	}
+	
+	private int numOfLevels() {
+		File list = new File("NZCER-spelling-lists.txt");
+		
+		ArrayList<ArrayList<String>> tempList = getWords(list);
+		
+		return tempList.size();
 	}
 }
