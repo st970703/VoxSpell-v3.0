@@ -67,11 +67,13 @@ public class SpellingAid extends JFrame implements ActionListener{
 	 */
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		String action = e.getActionCommand();
+		//String action = e.getActionCommand();
+		Object action = e.getSource();
 		
-		if (action.equals(newQuizBtn.getActionCommand())) {
+		if (action.equals(newQuizBtn)) {
+		//if (action.equals(newQuizBtn.getActionCommand())) {
 			removeQuizListeners();
-			_currentQuiz = new Quiz(QuizType.NEW);
+			_currentQuiz = new Quiz(QuizType.NEW, 11); // change the input number here to change level for now
 			inputText.addActionListener(_currentQuiz);
 			instructions.setText("Spell the word below and press Enter: ");
 			inputText.setEnabled(true);
@@ -79,9 +81,10 @@ public class SpellingAid extends JFrame implements ActionListener{
 			inputText.requestFocusInWindow();
 			boolean status = _currentQuiz.sayNextWord();
 			if (!status) { inputText.setEnabled(false); };
-		} else if (action.equals(reviewMistakesBtn.getActionCommand())) {
+		} else if (action.equals(reviewMistakesBtn)) {	
+		//} else if (action.equals(reviewMistakesBtn.getActionCommand())) {
 			removeQuizListeners();
-			_currentQuiz = new Quiz(QuizType.REVIEW);
+			_currentQuiz = new Quiz(QuizType.REVIEW, 1);
 			inputText.addActionListener(_currentQuiz);
 			instructions.setText("Spell the word below and press Enter: ");
 			inputText.setEnabled(true);
@@ -89,7 +92,8 @@ public class SpellingAid extends JFrame implements ActionListener{
 			inputText.requestFocusInWindow();
 			boolean status = _currentQuiz.sayNextWord();
 			if (!status) { inputText.setEnabled(false); };
-		} else if (action.equals(viewStatsBtn.getActionCommand())) {
+		//} else if (action.equals(viewStatsBtn.getActionCommand())) {
+		} else if (action.equals(viewStatsBtn)) {
 			instructions.setText("");
 			previousInput.setText("");
 			inputText.setEnabled(false);
@@ -99,7 +103,8 @@ public class SpellingAid extends JFrame implements ActionListener{
 			for (String line : formattedStats) {
 				previousInput.append(line);
 			}
-		} else if (action.equals(clearStatsBtn.getActionCommand())) {
+		//} else if (action.equals(clearStatsBtn.getActionCommand())) {
+		} else if (action.equals(clearStatsBtn)) {
 			instructions.setText("");
 			previousInput.setText("");
 			inputText.setEnabled(false);
@@ -108,7 +113,7 @@ public class SpellingAid extends JFrame implements ActionListener{
 			clearList(".failedlist");
 			clearList(".faultedlist");
 		} else {
-			previousInput.setText(previousInput.getText() + action + "\n");
+			previousInput.setText(previousInput.getText() + e.getActionCommand() + "\n");
 			inputText.setText("");
 		}
 	}
