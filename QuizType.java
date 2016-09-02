@@ -1,6 +1,7 @@
 public enum QuizType {
 	NEW("wordList"),
-	REVIEW("failedList")
+	REVIEW("failedList"),
+	INVALID("testingStuff")
 	;
 
 	private final String quizType;
