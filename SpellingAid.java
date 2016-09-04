@@ -1,5 +1,6 @@
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -43,6 +44,11 @@ public class SpellingAid extends JFrame implements ActionListener{
 	private Quiz _currentQuiz;
 	private List _wordSource;
 	
+	//new stuff
+	private JButton relistenToWord = new JButton("Listen to the word again.");
+	private JPanel textAndButton = new JPanel();
+	private JScrollPane previousInputScroll;
+	
 	/**
 	 * Initializes swing components.
 	 */
@@ -56,17 +62,23 @@ public class SpellingAid extends JFrame implements ActionListener{
 		clearStatsBtn.addActionListener(this);
 		inputText.addActionListener(this);
 		inputText.setEnabled(false);
+		relistenToWord.addActionListener(this);
 		menuBtns.add(newQuizBtn);
 		menuBtns.add(reviewMistakesBtn);
 		menuBtns.add(viewStatsBtn);
 		menuBtns.add(clearStatsBtn);
 		inputArea.add(instructions);
-		inputArea.add(inputText);
+		// new stuff
+		inputText.setPreferredSize(new Dimension(650, 25));
+		textAndButton.add(inputText);
+		textAndButton.add(relistenToWord);
+		inputArea.add(textAndButton);
+		previousInputScroll = new JScrollPane(previousInput);
 		add(inputArea, BorderLayout.SOUTH);
 		add(menuBtns, BorderLayout.WEST);
-		add(previousInput, BorderLayout.CENTER);
+		add(previousInputScroll, BorderLayout.CENTER);
 		previousInput.setEditable(false);
-		previousInput.setPreferredSize(new Dimension(300, 300));
+//		previousInput.setPreferredSize(new Dimension(300, 300));
 		_wordSource = new List(new File("NZCER-spelling-lists.txt"));
 		_stats = new Statistics(_wordSource);
 		_statsTable = new JTable(_stats);
@@ -125,6 +137,11 @@ public class SpellingAid extends JFrame implements ActionListener{
 			_stats.clearStats();
 			clearList(".failedlist");
 			clearList(".faultedlist");
+		} else if (action.equals(relistenToWord)) {
+			if (_currentQuiz != null) {
+				_currentQuiz.repeatWordWithNoPenalty();
+			}
+			inputText.requestFocusInWindow();
 		} else {
 			previousInput.setText(previousInput.getText() + e.getActionCommand() + "\n");
 			inputText.setText("");

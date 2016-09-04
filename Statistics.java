@@ -78,6 +78,7 @@ public class Statistics extends AbstractTableModel{
 	 * @param word - the word to add stats to
 	 */
 	public void addMastered(String word) {
+		word = word.toLowerCase();
 		if (_words.contains(word)) {
 			int pos = _words.indexOf(word);
 			_masteredCount.set(pos, _masteredCount.get(pos) + 1);
@@ -96,6 +97,7 @@ public class Statistics extends AbstractTableModel{
 	 * @param word - the word to add stats to
 	 */
 	public void addFaulted(String word) {
+		word = word.toLowerCase();
 		if (_words.contains(word)) {
 			int pos = _words.indexOf(word);
 			_faultedCount.set(pos, _faultedCount.get(pos) + 1);
@@ -114,6 +116,7 @@ public class Statistics extends AbstractTableModel{
 	 * @param word - the word to add stats to
 	 */
 	public void addFailed(String word) {
+		word = word.toLowerCase();
 		if (_words.contains(word)) {
 			int pos = _words.indexOf(word);
 			_failedCount.set(pos, _failedCount.get(pos) + 1);

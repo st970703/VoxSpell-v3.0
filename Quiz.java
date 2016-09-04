@@ -145,6 +145,11 @@ public class Quiz implements ActionListener{
 		}
 	}
 	
+	public void repeatWordWithNoPenalty() {
+		String word = _words.get(_previousWords.get(_previousWords.size() - 1));
+		sayWord(word);
+	}
+	
 	/**
 	 * Repeats the last word pronounced.
 	 */
