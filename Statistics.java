@@ -6,28 +6,71 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import javax.swing.table.AbstractTableModel;
+
 /**
  * This class represents statistics of the user. 
  * @author wayne
  *
  */
-public class Statistics {
+public class Statistics extends AbstractTableModel{
 	private ArrayList<String> _words;
 	private ArrayList<String> _sortedWords;
 	private ArrayList<Integer> _masteredCount;
 	private ArrayList<Integer> _faultedCount;
 	private ArrayList<Integer> _failedCount;
+	private ArrayList<ArrayList<ArrayList<String>>> _levelCounts; //0 = mastered, 1 = faulted, 2 = failed, 3 = no attempts
+	// rip going to need ArrayList<ArrayList<ArrayList<String>>>
+	private final String[] columnNames = {"Level", "Mastered", "Faulted", "Failed", "No Attempts"};
+	private ArrayList<ArrayList<String>> _lists;
 	
 	/**
 	 * Initializes the fields and then loads previously stored data from .stats file
 	 */
-	public Statistics() {
+	public Statistics(List list) {
 		_words = new ArrayList<>();
 		_sortedWords = new ArrayList<>();
 		_masteredCount = new ArrayList<>();
 		_faultedCount = new ArrayList<>();
 		_failedCount = new ArrayList<>();
+		_lists = list.getWords();
+		_levelCounts = new ArrayList<>();
+		initializeLevelCount(); //TODO: implement loading memory from previous sessions
 		loadStats();
+	}
+	
+	private void modifyLevelCount(int listToAddTo, String word, int level) {
+		for (int i = 0; i < _levelCounts.size(); i++) {
+			if (listToAddTo != i) {
+				_levelCounts.get(i).get(level).remove(word);
+			} else {
+				if (!_levelCounts.get(i).get(level).contains(word)) {
+					_levelCounts.get(i).get(level).add(word);
+				}
+			}
+		}
+	}
+
+	private void initializeLevelCount() {		
+		for (int i = 0; i < 3; i++) {
+			_levelCounts.add(new ArrayList<ArrayList<String>>());
+			
+			for (int j = 0; j < _lists.size(); j++) {
+				_levelCounts.get(i).add(new ArrayList<String>());
+			}
+		}
+		
+		initializeNoAttempts();
+	}
+	
+	private void initializeNoAttempts() {
+		_levelCounts.add(new ArrayList<ArrayList<String>>());
+		for (int i = 0; i < _lists.size(); i++) {
+			_levelCounts.get(_levelCounts.size() - 1).add(new ArrayList<String>());
+			for (String word : _lists.get(i)) {
+				_levelCounts.get(_levelCounts.size() - 1).get(i).add(word);
+			}
+		}
 	}
 	
 	/**
@@ -44,6 +87,7 @@ public class Statistics {
 			_faultedCount.add(0);
 			_failedCount.add(0);
 		}
+		addLevelCount(0, word);
 		saveStats();
 	}
 	
@@ -61,6 +105,7 @@ public class Statistics {
 			_faultedCount.add(1);
 			_failedCount.add(0);
 		}
+		addLevelCount(1, word);
 		saveStats();
 	}
 	
@@ -78,7 +123,19 @@ public class Statistics {
 			_faultedCount.add(0);
 			_failedCount.add(1);
 		}
+		addLevelCount(2, word);
 		saveStats();
+	}
+	
+	private void addLevelCount(int list, String word) {
+		for (int i = 0; i < _lists.size(); i++) {
+			if (_lists.get(i).contains(word)) {
+				//_levelCounts.get(list).get(i).set(i, _levelCounts.get(list).get(i) + 1);
+				//replace with use of modifyLevelCount()
+				modifyLevelCount(list, word, i);
+			}
+		}
+		fireTableDataChanged();
 	}
 	
 	/**
@@ -185,5 +242,31 @@ public class Statistics {
 		_words.clear();
 		_sortedWords.clear();
 		saveStats();
+	}
+	
+	@Override
+	public String getColumnName(int column) {
+		return columnNames[column];
+	}
+
+	@Override
+	public int getRowCount() {
+		return _lists.size();
+	}
+
+	@Override
+	public int getColumnCount() {
+		return columnNames.length;
+	}
+
+	@Override
+	public Object getValueAt(int rowIndex, int columnIndex) {
+		if (columnIndex > 0) {
+			int count = _levelCounts.get(columnIndex - 1).get(rowIndex).size();
+			
+			return count + "/" + _lists.get(rowIndex).size();
+		} else {
+			return "Level " + (rowIndex + 1);
+		}
 	}
 }

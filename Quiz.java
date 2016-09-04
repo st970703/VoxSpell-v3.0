@@ -34,8 +34,8 @@ public class Quiz implements ActionListener{
 	 * Initializes most private fields, depending on which quiz type is needed.
 	 * @param quizType
 	 */
-	public Quiz(QuizType quizType, int level) {
-		_stats = new Statistics();
+	public Quiz(QuizType quizType, int level, Statistics stats) {
+		_stats = stats;
 		_wordCount = 0;
 		_previousWords = new ArrayList<>();
 		_words = new ArrayList<>();

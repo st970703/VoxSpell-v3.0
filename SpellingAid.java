@@ -11,6 +11,8 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
@@ -34,14 +36,19 @@ public class SpellingAid extends JFrame implements ActionListener{
 	private JTextArea previousInput = new JTextArea("Please select one of the options to the left.");
 	private JLabel instructions = new JLabel();
 	
+	private Statistics _stats;
+	private JTable _statsTable;
+	private JScrollPane _scrollPane;
+	
 	private Quiz _currentQuiz;
+	private List _wordSource;
 	
 	/**
 	 * Initializes swing components.
 	 */
 	public SpellingAid() {
 		super("Spelling Aid V2.0");
-		setSize(600, 400);
+		setSize(900, 400);
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 		newQuizBtn.addActionListener(this);
 		reviewMistakesBtn.addActionListener(this);
@@ -60,6 +67,14 @@ public class SpellingAid extends JFrame implements ActionListener{
 		add(previousInput, BorderLayout.CENTER);
 		previousInput.setEditable(false);
 		previousInput.setPreferredSize(new Dimension(300, 300));
+		_wordSource = new List(new File("NZCER-spelling-lists.txt"));
+		_stats = new Statistics(_wordSource);
+		_statsTable = new JTable(_stats);
+		_statsTable.getColumnModel().getColumn(4).setPreferredWidth(100);
+		_scrollPane = new JScrollPane(_statsTable);
+		_scrollPane.setPreferredSize(new Dimension(400, 300));
+		_statsTable.setFillsViewportHeight(true);
+		add(_scrollPane, BorderLayout.EAST);
 	}
 	
 	/**
@@ -73,7 +88,7 @@ public class SpellingAid extends JFrame implements ActionListener{
 		if (action.equals(newQuizBtn)) {
 		//if (action.equals(newQuizBtn.getActionCommand())) {
 			removeQuizListeners();
-			_currentQuiz = new Quiz(QuizType.NEW, 11); // change the input number here to change level for now
+			_currentQuiz = new Quiz(QuizType.NEW, 11, _stats); // change the input number here to change level for now
 			inputText.addActionListener(_currentQuiz);
 			instructions.setText("Spell the word below and press Enter: ");
 			inputText.setEnabled(true);
@@ -84,7 +99,7 @@ public class SpellingAid extends JFrame implements ActionListener{
 		} else if (action.equals(reviewMistakesBtn)) {	
 		//} else if (action.equals(reviewMistakesBtn.getActionCommand())) {
 			removeQuizListeners();
-			_currentQuiz = new Quiz(QuizType.REVIEW, 1);
+			_currentQuiz = new Quiz(QuizType.REVIEW, 1, _stats);
 			inputText.addActionListener(_currentQuiz);
 			instructions.setText("Spell the word below and press Enter: ");
 			inputText.setEnabled(true);
@@ -97,8 +112,7 @@ public class SpellingAid extends JFrame implements ActionListener{
 			instructions.setText("");
 			previousInput.setText("");
 			inputText.setEnabled(false);
-			Statistics stats = new Statistics();
-			ArrayList<String> formattedStats = stats.getStats();
+			ArrayList<String> formattedStats = _stats.getStats();
 			
 			for (String line : formattedStats) {
 				previousInput.append(line);
@@ -108,8 +122,7 @@ public class SpellingAid extends JFrame implements ActionListener{
 			instructions.setText("");
 			previousInput.setText("");
 			inputText.setEnabled(false);
-			Statistics stats = new Statistics();
-			stats.clearStats();
+			_stats.clearStats();
 			clearList(".failedlist");
 			clearList(".faultedlist");
 		} else {
