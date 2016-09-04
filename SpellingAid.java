@@ -88,7 +88,7 @@ public class SpellingAid extends JFrame implements ActionListener{
 			}
 			
 			String answer = (String)JOptionPane.showInputDialog(this, "Please pick a spelling level to start with: ", "Spelling Level", JOptionPane.QUESTION_MESSAGE, null, levels, levels[0]);
-			int level = Integer.parseInt(s)
+			int level = Integer.parseInt(s) // This is where to continue coding from. I haven't finished this line.
 		}
 	}
 	
