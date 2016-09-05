@@ -34,8 +34,8 @@ public class Quiz implements ActionListener{
 	 * Initializes most private fields, depending on which quiz type is needed.
 	 * @param quizType
 	 */
-	public Quiz(QuizType quizType, int level) {
-		_stats = new Statistics();
+	public Quiz(QuizType quizType, int level, Statistics stats) {
+		_stats = stats;
 		_wordCount = 0;
 		_previousWords = new ArrayList<>();
 		_words = new ArrayList<>();
@@ -143,6 +143,11 @@ public class Quiz implements ActionListener{
 			sayWord("Quiz is finished.");
 			return false;
 		}
+	}
+	
+	public void repeatWordWithNoPenalty() {
+		String word = _words.get(_previousWords.get(_previousWords.size() - 1));
+		sayWord(word);
 	}
 	
 	/**
@@ -364,7 +369,7 @@ public class Quiz implements ActionListener{
 	 */
 	private boolean isValidInput(String input) {
 		for (int i = 0; i < input.length(); i++) {
-			if (!Character.isLetter(input.charAt(i)) && !(input.charAt(i) == ' ')) {
+			if (!Character.isLetter(input.charAt(i)) && !(input.charAt(i) == ' ') && !(input.charAt(i) == '\'')) {
 				return false;
 			}
 		}
