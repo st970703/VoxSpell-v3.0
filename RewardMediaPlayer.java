@@ -1,6 +1,4 @@
 
-package vlcjtest;
-
 /*
  * Example downloaded from the 
  */
@@ -29,8 +27,9 @@ public class RewardMediaPlayer {
 	
     private final EmbeddedMediaPlayerComponent mediaPlayerComponent;
 
-    private RewardMediaPlayer(String[] args) {
+    public RewardMediaPlayer(String[] args) {
         JFrame frame = new JFrame("The Reward Mediaplayer");
+        frame.setAlwaysOnTop(true);
 
         mediaPlayerComponent = new EmbeddedMediaPlayerComponent();
 
@@ -41,7 +40,7 @@ public class RewardMediaPlayer {
         
         frame.setContentPane(panel);
 
-        JPanel subPanel = new JPanel(new GridLayout(5,1));       
+        JPanel subPanel = new JPanel(new GridLayout(6,1));       
         
         JButton btnMute = new JButton("Mute");
         //panel.add(btnMute, BorderLayout.NORTH);
@@ -73,6 +72,16 @@ public class RewardMediaPlayer {
         //panel.add(btnSkipBack, BorderLayout.WEST);
         subPanel.add(btnSkipBack);
         
+        JButton btnPause = new JButton("Pause/Resume");
+        //panel.add(btnMute, BorderLayout.NORTH);
+        subPanel.add(btnPause);
+        btnPause.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				video.pause();
+			}
+		});
+        
         JButton btnStop = new JButton("Stop");
         //panel.add(btnMute, BorderLayout.NORTH);
         subPanel.add(btnStop);
@@ -93,10 +102,11 @@ public class RewardMediaPlayer {
 				video.mute(false);
 			}
 		});
+        
          
         panel.add(subPanel, BorderLayout.EAST);
         
-        JLabel labelTime = new JLabel("0 seconds");
+        final JLabel labelTime = new JLabel("0 seconds");
         panel.add(labelTime, BorderLayout.SOUTH);
 
         Timer timer = new Timer(50, new ActionListener() {
@@ -118,18 +128,18 @@ public class RewardMediaPlayer {
         video.mute(false);
     }
 
-    public static void main(final String[] args) {
-        
-        NativeLibrary.addSearchPath(
-            RuntimeUtil.getLibVlcLibraryName(), "/Applications/vlc-2.0.0/VLC.app/Contents/MacOS/lib"
-        );
-        Native.loadLibrary(RuntimeUtil.getLibVlcLibraryName(), LibVlc.class);
-        
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                new RewardMediaPlayer(args);
-            }
-        });
-    }
+//    public static void main(final String[] args) {
+//        
+//        NativeLibrary.addSearchPath(
+//            RuntimeUtil.getLibVlcLibraryName(), "/Applications/vlc-2.0.0/VLC.app/Contents/MacOS/lib"
+//        );
+//        Native.loadLibrary(RuntimeUtil.getLibVlcLibraryName(), LibVlc.class);
+//        
+//        SwingUtilities.invokeLater(new Runnable() {
+//            @Override
+//            public void run() {
+//                new RewardMediaPlayer(args);
+//            }
+//        });
+//    }
 }
