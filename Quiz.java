@@ -9,6 +9,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+
+import com.sun.jna.Native;
+import com.sun.jna.NativeLibrary;
+
+import uk.co.caprica.vlcj.binding.LibVlc;
+import uk.co.caprica.vlcj.runtime.RuntimeUtil;
 
 /**
  * This class represents a quiz, either taking words from wordlist or failedlist.
@@ -20,6 +28,7 @@ public class Quiz implements ActionListener{
 	private int _wordCount;
 	private int _totalWords;
 	private int _attempts;
+	private int _masteredWords;
 	private File _wordList;
 	private File _failedList = new File(".failedlist");
 	private File _faultedList = new File(".faultedlist");
@@ -29,14 +38,17 @@ public class Quiz implements ActionListener{
 	private QuizType _quizType; 
 	
 	private Statistics _stats;
+	private SpellingAid _parent;
 	
 	/**
 	 * Initializes most private fields, depending on which quiz type is needed.
 	 * @param quizType
 	 */
-	public Quiz(QuizType quizType, int level, Statistics stats) {
+	public Quiz(QuizType quizType, int level, Statistics stats, SpellingAid parent) {
+		_parent = parent;
 		_stats = stats;
 		_wordCount = 0;
+		_masteredWords = 0;
 		_previousWords = new ArrayList<>();
 		_words = new ArrayList<>();
 		
@@ -131,16 +143,25 @@ public class Quiz implements ActionListener{
 	 * Increments wordcount field, keeping track of how many words have been finished, and calls sayWord with a random word from the wordlist.
 	 * @return
 	 */
-	public boolean sayNextWord() {
+	public boolean sayNextWord(String line) {
 		_wordCount++;
 		if (_wordCount <= _totalWords) {
 			_attempts = 0;
 
 			_previousWords.add(_wordCount - 1);
-			sayWord(_words.get(_wordCount - 1));
+			if (line == null) {
+				sayWord(_words.get(_wordCount - 1));
+			} else {
+				sayWord(line + " " + _words.get(_wordCount - 1));
+			}
 			return true;
 		} else {
 			sayWord("Quiz is finished.");
+			// call method in spellingaid to potentially shift up levels
+			if (_masteredWords >= 9) {
+				// call method from SpellingAid, which allows user to move up levels
+				_parent.levelCompleted();
+			}
 			return false;
 		}
 	}
@@ -155,9 +176,7 @@ public class Quiz implements ActionListener{
 	 */
 	public void repeatWord() {
 		String word = _words.get(_previousWords.get(_previousWords.size() - 1));
-		sayWord("Incorrect, Please try again. ");
-		sayWord(word);
-		sayWord(word);
+		sayWord("Incorrect, Please try again. " + word + ", " + word);
 	}
 	
 	/**
@@ -166,11 +185,12 @@ public class Quiz implements ActionListener{
 	public void spellWord() {
 		String word = _words.get(_previousWords.get(_previousWords.size() - 1));
 		String spelling = word + " is spelled ";
-		sayWord(spelling);
 		
 		for (int i = 0; i < word.length(); i++) {
-			sayWord(word.charAt(i) + "");
+			spelling += word.charAt(i) + " ";
 		}
+		
+		sayWord(spelling);
 	}
 	
 	/**
@@ -178,23 +198,34 @@ public class Quiz implements ActionListener{
 	 * @param word - a String containing what you want to pronounce
 	 */
 	private void sayWord(String word) {
-		try {
-			String command = "echo " + word + " | festival --tts ";
-			ProcessBuilder pb = new ProcessBuilder("bash", "-c", command);
+		System.out.println(word);
+		final String wordword = word;
+		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+
+			@Override
+			protected Void doInBackground() throws Exception {
+				try {
+					String command = "echo " + wordword + " | festival --tts ";
+					ProcessBuilder pb = new ProcessBuilder("bash", "-c", command);
 
 
-			Process process = pb.start();
-			
-			try {
-				process.waitFor();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+					Process process = pb.start();
+					
+					try {
+						process.waitFor();
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				return null;
 			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+			
+		};
+		worker.execute();
 	}
 
 	/**
@@ -212,7 +243,6 @@ public class Quiz implements ActionListener{
 			_attempts++;
 			// if the user spells word correctly
 			if (userWord.toLowerCase().equals(_words.get(_previousWords.get(_previousWords.size() - 1)).toLowerCase())) {
-				sayWord("Correct!");
 				if (_attempts == 2) { // add and remove from appropriate lists, add stats, all depending on number of attempts so far
 					addToList(_faultedList);
 					removeFromList(_failedList);
@@ -221,25 +251,24 @@ public class Quiz implements ActionListener{
 					removeFromList(_failedList);
 					removeFromList(_faultedList);
 					_stats.addMastered(userWord);
+					_masteredWords++;
 				}
-				sayNextWord(); // move onto the next word
+				sayNextWord("Correct!"); // move onto the next word
 			} else { // if the user spells the word wrong
 				if (_attempts == 1) {
 					repeatWord();
 				} else if (_attempts == 2) { // if the user fails the word
 					if (_quizType.getQuizType().equals(QuizType.NEW.getQuizType())) { //if this is a new quiz, remove from / add to appropriate lists and add stats
-						sayWord("Incorrect.");
 						removeFromList(_faultedList);
 						addToList(_failedList);
 						_stats.addFailed(_words.get(_previousWords.get(_previousWords.size() - 1)));
-						sayNextWord();
+						sayNextWord("Incorrect.");
 					} else { //if this is a review quiz, give user another chance to spell word, spelling it out for them
 						spellWord(); //however, don't remove from failedlist, even if they get it right, because they clearly need more practice
 						_stats.addFailed(_words.get(_previousWords.get(_previousWords.size() - 1)));
 					}
 				} else { //if they fail the extra try they get in review quizzes
-					sayWord("Incorrect.");
-					sayNextWord();
+					sayNextWord("Incorrect.");
 				}
 			}
 		}
@@ -369,7 +398,7 @@ public class Quiz implements ActionListener{
 	 */
 	private boolean isValidInput(String input) {
 		for (int i = 0; i < input.length(); i++) {
-			if (!Character.isLetter(input.charAt(i)) && !(input.charAt(i) == ' ')) {
+			if (!Character.isLetter(input.charAt(i)) && !(input.charAt(i) == ' ') && !(input.charAt(i) == '\'')) {
 				return false;
 			}
 		}
