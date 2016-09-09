@@ -5,7 +5,11 @@ import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -21,6 +25,7 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 
 import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
@@ -63,6 +68,8 @@ public class SpellingAid extends JFrame implements ActionListener{
 	private JPanel textAndButton = new JPanel();
 	private JScrollPane previousInputScroll;
 	
+	private JPanel _mainInterface = new JPanel();
+	
 	/**
 	 * Initializes swing components.
 	 */
@@ -102,6 +109,11 @@ public class SpellingAid extends JFrame implements ActionListener{
 		_scrollPane.setPreferredSize(new Dimension(400, 300));
 		_statsTable.setFillsViewportHeight(true);
 		add(_scrollPane, BorderLayout.EAST);
+		
+		voice1.addActionListener(this);
+		voice2.addActionListener(this);
+		
+		checkVoice();
 
 		//Asking user for which spelling level they want to start with
 		boolean isAnswer = false;
@@ -120,6 +132,7 @@ public class SpellingAid extends JFrame implements ActionListener{
 				}
 			}
 		}
+
 	}
 	
 	/**
@@ -175,9 +188,76 @@ public class SpellingAid extends JFrame implements ActionListener{
 				_currentQuiz.repeatWordWithNoPenalty();
 			}
 			inputText.requestFocusInWindow();
+		} else if (action.equals(voice1)) {
+			switchVoice("voice_kal_diphone");
+		} else if (action.equals(voice2)) {
+			switchVoice("voice_cmu_us_rms_arctic_clunits");
 		} else {
 			previousInput.setText(previousInput.getText() + e.getActionCommand() + "\n");
 			inputText.setText("");
+		}
+	}
+
+	private void checkVoice() {
+		try {
+			ProcessBuilder pb = new ProcessBuilder("bash", "-c", "find cmu_us_rms_arctic_clunits -maxdepth 1");
+			Process pro = pb.start();
+			
+			BufferedReader stdOut = new BufferedReader(new InputStreamReader(pro.getInputStream()));
+			
+			String line = stdOut.readLine();
+			
+			if (line != null) {
+				voice2.setEnabled(true);
+			} else {
+				voice2.setEnabled(false);
+				JOptionPane.showMessageDialog(null, "Second voice was not found (cmu_us_rms_arctic_clunits).", "Uh oh!", JOptionPane.ERROR_MESSAGE);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void switchVoice(String voice) {
+		try {
+			ProcessBuilder pb = new ProcessBuilder("bash", "-c", "echo ~");
+			Process pro = pb.start();
+			
+			BufferedReader stdOut = new BufferedReader(new InputStreamReader(pro.getInputStream()));
+
+			String line = stdOut.readLine();
+			
+			stdOut.close();
+			
+			File festivalrc = new File(line + "/.festivalrc");
+			ArrayList<String> fileContents = new ArrayList<>();
+			
+			if (!festivalrc.exists()) {
+				festivalrc.createNewFile();
+			}
+			
+			BufferedReader br = new BufferedReader(new FileReader(festivalrc));
+			
+			while ((line = br.readLine()) != null) {
+				fileContents.add(line);
+			}
+			
+			br.close();
+			
+			BufferedWriter bw = new BufferedWriter(new FileWriter(festivalrc));
+			
+			for (String contents : fileContents) {
+				if (contents.startsWith("(set! voice_default")) {
+					contents = "(set! voice_default '" + voice + ")";
+				}
+				
+				bw.write(contents);
+			}
+			
+			bw.close();
+			
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 	
@@ -232,17 +312,28 @@ public class SpellingAid extends JFrame implements ActionListener{
 	}
 	
 	private void playVideo() {
-		NativeLibrary.addSearchPath(
-	            RuntimeUtil.getLibVlcLibraryName(), "/Applications/vlc-2.0.0/VLC.app/Contents/MacOS/lib"
-	        );
-	        Native.loadLibrary(RuntimeUtil.getLibVlcLibraryName(), LibVlc.class);
-	        
-	        SwingUtilities.invokeLater(new Runnable() {
-	            @Override
-	            public void run() {
-	                new RewardMediaPlayer(null);
-	            }
-	        });
+		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+
+			@Override
+			protected Void doInBackground() throws Exception {
+				NativeLibrary.addSearchPath(
+			            RuntimeUtil.getLibVlcLibraryName(), "/Applications/vlc-2.0.0/VLC.app/Contents/MacOS/lib"
+			        );
+			        Native.loadLibrary(RuntimeUtil.getLibVlcLibraryName(), LibVlc.class);
+			        
+//			        SwingUtilities.invokeLater(new Runnable() {
+//			            @Override
+//			            public void run() {
+			                new RewardMediaPlayer(null);
+//			            }
+//			        });
+			    
+			    return null;
+			}
+			
+		};
+		
+		worker.execute();
 	}
 	
 	public static void main(String[] args) {

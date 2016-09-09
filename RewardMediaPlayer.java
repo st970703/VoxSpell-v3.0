@@ -23,7 +23,7 @@ import uk.co.caprica.vlcj.runtime.RuntimeUtil;
 import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
 
-public class RewardMediaPlayer {
+public class RewardMediaPlayer{
 	
     private final EmbeddedMediaPlayerComponent mediaPlayerComponent;
 

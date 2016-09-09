@@ -96,7 +96,7 @@ public class Quiz implements ActionListener{
 	private void selectWords(int level) {
 		ArrayList<String> tempList = _lists.get(level - 1);
 		int pos = 0;
-		for (int i = 0; i < 10; i++) {
+		for (int i = 0; i < Math.min(10, tempList.size()); i++) {
 			while (_words.contains(tempList.get(pos = (int)(Math.random() * tempList.size())))) { }
 			_words.add(tempList.get(pos));
 		}
