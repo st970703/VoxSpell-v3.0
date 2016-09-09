@@ -27,7 +27,7 @@ public class Statistics extends AbstractTableModel{
 	/**
 	 * Initializes the fields and then loads previously stored data from .stats file
 	 */
-	public Statistics(List list) {
+	public Statistics(WordList list) {
 		_words = new ArrayList<>();
 		_sortedWords = new ArrayList<>();
 		_masteredCount = new ArrayList<>();

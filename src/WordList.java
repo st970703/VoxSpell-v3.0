@@ -4,11 +4,11 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 
-public class List {
+public class WordList {
 
 	private File _listFile;
 	
-	public List(File list) {
+	public WordList(File list) {
 		_listFile = list;
 	}
 	
