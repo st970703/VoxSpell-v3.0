@@ -1,4 +1,5 @@
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
@@ -14,18 +15,31 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+
+import com.sun.jna.Native;
+import com.sun.jna.NativeLibrary;
+
+import uk.co.caprica.vlcj.binding.LibVlc;
+import uk.co.caprica.vlcj.runtime.RuntimeUtil;
 
 /**
  * This class creates the GUI and required objects to run the program.
  * @author wayne
  *
  */
-public class SpellingAid extends JFrame implements ActionListener{
-
+public class SpellingAid /*extends JFrame */implements ActionListener{
+	//new
+	private JFrame spellingJFrame = new JFrame("Spelling Aid V2.0");
+	
+	private JTabbedPane tabbedPane = new JTabbedPane();
+	private JPanel spellingPanel = new JPanel();
+	private JPanel videoPanel = new JPanel();
+	
 	// many many Swing components
 	private JTextField inputText = new JTextField();
 	private JButton newQuizBtn = new JButton("New Spelling Quiz");
@@ -49,6 +63,8 @@ public class SpellingAid extends JFrame implements ActionListener{
 	
 	//new stuff
 	private JButton relistenToWord = new JButton("Listen to the word again.");
+	private JButton voice1 = new JButton("Voice 1");
+	private JButton voice2 = new JButton("Voice 2");
 	private JPanel textAndButton = new JPanel();
 	private JScrollPane previousInputScroll;
 	
@@ -56,9 +72,8 @@ public class SpellingAid extends JFrame implements ActionListener{
 	 * Initializes swing components.
 	 */
 	public SpellingAid() {
-		super("Spelling Aid V2.0");
-		setSize(900, 400);
-		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+		spellingJFrame.setSize(900, 400);
+		spellingJFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		newQuizBtn.addActionListener(this);
 		reviewMistakesBtn.addActionListener(this);
 		viewStatsBtn.addActionListener(this);
@@ -72,14 +87,16 @@ public class SpellingAid extends JFrame implements ActionListener{
 		menuBtns.add(clearStatsBtn);
 		inputArea.add(instructions);
 		// new stuff
-		inputText.setPreferredSize(new Dimension(650, 25));
+		inputText.setPreferredSize(new Dimension(450, 25));
 		textAndButton.add(inputText);
 		textAndButton.add(relistenToWord);
+		textAndButton.add(voice1);
+		textAndButton.add(voice2);
 		inputArea.add(textAndButton);
 		previousInputScroll = new JScrollPane(previousInput);
-		add(inputArea, BorderLayout.SOUTH);
-		add(menuBtns, BorderLayout.WEST);
-		add(previousInputScroll, BorderLayout.CENTER);
+		spellingPanel.add(inputArea, BorderLayout.SOUTH);
+		spellingPanel.add(menuBtns, BorderLayout.WEST);
+		spellingPanel.add(previousInputScroll, BorderLayout.CENTER);
 		previousInput.setEditable(false);
 		_wordSource = new List(new File("NZCER-spelling-lists.txt"));
 		_stats = new Statistics(_wordSource);
@@ -88,7 +105,7 @@ public class SpellingAid extends JFrame implements ActionListener{
 		_scrollPane = new JScrollPane(_statsTable);
 		_scrollPane.setPreferredSize(new Dimension(400, 300));
 		_statsTable.setFillsViewportHeight(true);
-		add(_scrollPane, BorderLayout.EAST);
+		spellingPanel.add(_scrollPane, BorderLayout.EAST);
 		
 		//Asking user for which spelling level they want to start with
 				boolean isAnswer = false;
@@ -98,7 +115,7 @@ public class SpellingAid extends JFrame implements ActionListener{
 						levels[i] = "Level " + (i + 1);
 					}
 					
-					String answer = (String)JOptionPane.showInputDialog(this, "Please pick a spelling level to start with: ", "Spelling Level", JOptionPane.QUESTION_MESSAGE, null, levels, levels[0]);
+					String answer = (String)JOptionPane.showInputDialog(spellingJFrame, "Please pick a spelling level to start with: ", "Spelling Level", JOptionPane.QUESTION_MESSAGE, null, levels, levels[0]);
 					int level = Integer.parseInt(answer.split(" ")[1]); // This is where to continue coding from. I haven't finished this line.
 					if (level <= _wordSource.numOfLevels() ) {
 						_level = level;
@@ -107,8 +124,18 @@ public class SpellingAid extends JFrame implements ActionListener{
 					}
 
 				}
+				
+				//new 
+				tabbedPane.add(spellingPanel, "Spelling Tab");
+				tabbedPane.add(videoPanel, "Video Tab");
+				
 	}
 	
+	//new
+	public JFrame getJFrame() {
+		return spellingJFrame;
+	}
+
 	/**
 	 * Performs different actions, depending on what action was performed.
 	 */
@@ -120,7 +147,7 @@ public class SpellingAid extends JFrame implements ActionListener{
 		if (action.equals(newQuizBtn)) {
 		//if (action.equals(newQuizBtn.getActionCommand())) {
 			removeQuizListeners();
-			_currentQuiz = new Quiz(QuizType.NEW, _level, _stats); // change the input number here to change level for now
+			_currentQuiz = new Quiz(QuizType.NEW, _level, _stats, this); // change the input number here to change level for now
 			inputText.addActionListener(_currentQuiz);
 			instructions.setText("Spell the word below and press Enter: ");
 			inputText.setEnabled(true);
@@ -131,7 +158,7 @@ public class SpellingAid extends JFrame implements ActionListener{
 		} else if (action.equals(reviewMistakesBtn)) {	
 		//} else if (action.equals(reviewMistakesBtn.getActionCommand())) {
 			removeQuizListeners();
-			_currentQuiz = new Quiz(QuizType.REVIEW, 1, _stats);
+			_currentQuiz = new Quiz(QuizType.REVIEW, 1, _stats, this);
 			inputText.addActionListener(_currentQuiz);
 			instructions.setText("Spell the word below and press Enter: ");
 			inputText.setEnabled(true);
@@ -198,13 +225,47 @@ public class SpellingAid extends JFrame implements ActionListener{
 		}
 	}
 	
+	public void levelCompleted() {
+		//create pop up to ask user either move up, stay at level, or play video
+		Object[] options = {"Move up a Spelling level", "Stay at current Spelling level", "Play reward video"};
+		while (true) {
+			int n = JOptionPane.showOptionDialog(spellingJFrame, "Please select an option:", "Congratulations!", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+			
+			if (n == 0) {
+				if (_level < _wordSource.numOfLevels()) {
+					_level++;
+				}
+				break;
+			} else if (n == 1) {
+				break;
+			} else if (n == 2) {
+				playVideo();
+				break;
+			}
+		}
+	}
+	
+	private void playVideo() {
+		NativeLibrary.addSearchPath(
+	            RuntimeUtil.getLibVlcLibraryName(), "/Applications/vlc-2.0.0/VLC.app/Contents/MacOS/lib"
+	        );
+	        Native.loadLibrary(RuntimeUtil.getLibVlcLibraryName(), LibVlc.class);
+	        
+	        SwingUtilities.invokeLater(new Runnable() {
+	            @Override
+	            public void run() {
+	                new RewardMediaPlayer();
+	            }
+	        });
+	}
+	
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(new Runnable() {
 
 			@Override
 			public void run() {
 				SpellingAid frame = new SpellingAid();
-				frame.setVisible(true);
+				frame.getJFrame().setVisible(true);
 			}
 			
 		});
