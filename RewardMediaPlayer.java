@@ -1,6 +1,7 @@
 
 /*
- * Example downloaded from the 
+ * Example downloaded from the Nasser's ACP exercise.
+ * Editor: En-Yu Mike Lee, 15/09/2016
  */
 
 import java.awt.BorderLayout;
@@ -11,44 +12,54 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Timer;
-
 import uk.co.caprica.vlcj.component.EmbeddedMediaPlayerComponent;
 import uk.co.caprica.vlcj.player.MediaPlayer;
 import uk.co.caprica.vlcj.player.MediaPlayerEventAdapter;
 import uk.co.caprica.vlcj.player.embedded.EmbeddedMediaPlayer;
 
+/**
+ * RewardMediaPlayer constructs a media player in the JPanel supplied.
+ * @author mike
+ */
 public class RewardMediaPlayer{
 	
     private final EmbeddedMediaPlayerComponent mediaPlayerComponent;
     private String _filename;
 
+    /**
+     * The constructor of RewardMediaPlayer.
+     * @param panel - an external JPanel.
+     * @param parent - an object of SpellingAid Class.
+     * @param filename - a String.
+     */
     public RewardMediaPlayer(JPanel panel, final SpellingAid parent, String filename) {
-//        JFrame frame = new JFrame("The Reward Mediaplayer");
-//        frame.setAlwaysOnTop(true);
-
+    	// Set the private fields
         mediaPlayerComponent = new EmbeddedMediaPlayerComponent();
         _filename = filename;
         
         final EmbeddedMediaPlayer video = mediaPlayerComponent.getMediaPlayer();
         
-//        JPanel panel = new JPanel(new BorderLayout());
+        // Add the media player to the JPanel
         panel.add(mediaPlayerComponent, BorderLayout.CENTER);
-        
-//        frame.setContentPane(panel);
-        
+
+        // Add a listener to switch back to the main JPanel when the video finishes
         video.addMediaPlayerEventListener(new MediaPlayerEventAdapter() {
         	@Override
         	public void finished(MediaPlayer mediaPlayer) {
+        		// Call the stop() method
         		video.stop();
+        		// Switch to the main JPanel inside the main GUI
         		parent.switchScreens("MAIN");
+        		// Show the option dialog again
         		parent.levelCompleted();
         	}
         });
 
+        // A sub panel to contain all JButtons, GridLayout is used.
         JPanel subPanel = new JPanel(new GridLayout(6,1));       
         
+        // Construct all JButtons and add Listeners
         JButton btnMute = new JButton("Mute");
-//        panel.add(btnMute, BorderLayout.NORTH);
         subPanel.add(btnMute);
         btnMute.addActionListener(new ActionListener() {
 			@Override
@@ -58,27 +69,24 @@ public class RewardMediaPlayer{
 		});
         
         JButton btnSkip = new JButton("Forward 5 seconds");
+        subPanel.add(btnSkip);
         btnSkip.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				video.skip(5000);
 			}
 		});
-        //panel.add(btnSkip, BorderLayout.EAST);
-        subPanel.add(btnSkip);
         
         JButton btnSkipBack = new JButton("Backward 5 seconds");
+        subPanel.add(btnSkipBack);
         btnSkipBack.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				video.skip(-5000);
 			}
 		});
-        //panel.add(btnSkipBack, BorderLayout.WEST);
-        subPanel.add(btnSkipBack);
-        
+     
         JButton btnPause = new JButton("Pause/Resume");
-        //panel.add(btnMute, BorderLayout.NORTH);
         subPanel.add(btnPause);
         btnPause.addActionListener(new ActionListener() {
 			@Override
@@ -88,7 +96,6 @@ public class RewardMediaPlayer{
 		});
         
         JButton btnStop = new JButton("Stop");
-        //panel.add(btnMute, BorderLayout.NORTH);
         subPanel.add(btnStop);
         btnStop.addActionListener(new ActionListener() {
 			@Override
@@ -100,7 +107,6 @@ public class RewardMediaPlayer{
 		});
         
         JButton btnReplay = new JButton("Replay");
-        //panel.add(btnMute, BorderLayout.NORTH);
         subPanel.add(btnReplay);
         btnReplay.addActionListener(new ActionListener() {
 			@Override
@@ -110,9 +116,10 @@ public class RewardMediaPlayer{
 			}
 		});
         
-         
+        // Add the JPanel containing all JButtons 
         panel.add(subPanel, BorderLayout.EAST);
         
+        // Configure the display of video time
         final JLabel labelTime = new JLabel("0 seconds");
         panel.add(labelTime, BorderLayout.SOUTH);
 
@@ -121,39 +128,18 @@ public class RewardMediaPlayer{
 			public void actionPerformed(ActionEvent e) {
 				long time = (long)(video.getTime()/1000.0);
 				long totalTime = (long)(video.getLength()/1000.0);
-				//System.out.println(totalTime);
 				labelTime.setText(String.valueOf(time)+ " / " + String.valueOf(totalTime)+" seconds");
 			}
 		});
         timer.start();
         
+        // Configure the JPanel
         panel.setLocation(100, 100);
         panel.setSize(1050, 600);
-//        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         panel.setVisible(true);
 
-        //String filename = "big_buck_bunny_1_minute_aecho.avi";
-        //String filename = "big_buck_bunny_1_minute.avi";
+        // Play and un-mute the video
         video.playMedia(_filename);
         video.mute(false);
     }
-
-    /*public static void main(final String[] args) {
-        
-        NativeLibrary.addSearchPath(
-            RuntimeUtil.getLibVlcLibraryName(), "/Applications/vlc-2.0.0/VLC.app/Contents/MacOS/lib"
-        );
-        Native.loadLibrary(RuntimeUtil.getLibVlcLibraryName(), LibVlc.class);
-        
-        JFrame frame = new JFrame();
-        final JPanel panel = new JPanel();
-        frame.add(panel);
-        
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                new RewardMediaPlayer(panel, null);
-            }
-        });
-    }*/
 }
