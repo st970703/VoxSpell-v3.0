@@ -1,5 +1,8 @@
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -127,28 +130,40 @@ public class Quiz implements ActionListener{
 	 * Uses festival to pronounce the string passed in.
 	 * @param word - a String containing what you want to pronounce
 	 */
-	private void sayWord(String word) {
+	private void sayWord(final String word) {
 		System.out.println(word);
-		final String wordword = word;
 		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
 
 			@Override
 			protected Void doInBackground() throws Exception {
 				try {
-					String command = "echo " + wordword + " | festival --tts ";
-					ProcessBuilder pb = new ProcessBuilder("bash", "-c", command);
+					File file = new File(".sayText.scm");
 
-
-					Process process = pb.start();
-					
-					try {
-						process.waitFor();
-					} catch (InterruptedException e) {
-						e.printStackTrace();
+					if (!file.exists()) {
+						file.createNewFile();
 					}
+					
+					String voice = _parent.getVoice();
+					
+					BufferedWriter bw = new BufferedWriter(new FileWriter(file));
+					
+					bw.write("(" + "voice_" + voice + ")");
+					
+					bw.write("(SayText \"" + word + " ... ... ... ... \")");
+					
+					bw.close();
+					
+					ProcessBuilder pb = new ProcessBuilder("bash", "-c", "festival .sayText.scm");
+					
+					Process pro = pb.start();
+					
+					pro.waitFor();
 				} catch (IOException e) {
 					e.printStackTrace();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
 				}
+				
 				return null;
 			}
 			
@@ -179,7 +194,7 @@ public class Quiz implements ActionListener{
 					_masteredWords++;
 					_wordList.removeFromFailedList(userWord.toLowerCase());
 				}
-				sayNextWord("Correct! ... "); // move onto the next word
+				sayNextWord(" ... ... Correct! ... "); // move onto the next word
 			} else { // if the user spells the word wrong
 				if (_attempts == 1) { // if this was their first attempt 
 					repeatWord();
@@ -193,7 +208,7 @@ public class Quiz implements ActionListener{
 						_stats.addFailed(_words.get(_previousWords.get(_previousWords.size() - 1)));
 					}
 				} else { //if they fail the extra try they get in review quizzes
-					sayNextWord("Incorrect. ... ");
+					sayNextWord(" ... ... Incorrect. ... ");
 				}
 			}
 		}

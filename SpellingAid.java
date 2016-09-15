@@ -1,6 +1,5 @@
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
@@ -28,7 +27,6 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
-import javax.swing.border.Border;
 import javax.swing.border.EtchedBorder;
 
 import com.sun.jna.Native;
@@ -88,11 +86,14 @@ public class SpellingAid implements ActionListener{
 	private ArrayList<String> voiceOptions = new ArrayList<String>();
 	private JComboBox voiceCBox;
 	
+	private String _voice;
+	
 	/**
 	 * Initializes swing components.
 	 */
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public SpellingAid() {
+		_voice = "voice_kal_diphone";
 		window = new JFrame("Spelling Aid V2.0");
 		window.setSize(900, 500);
 		window.setDefaultCloseOperation(window.EXIT_ON_CLOSE);
@@ -157,6 +158,7 @@ public class SpellingAid implements ActionListener{
 		voiceOptions.add("cmu_us_slt_arctic");
 		voiceOptions.add("cmu_us_bdl_arctic");
 		voiceOptions.add("cmu_us_clb_arctic");
+		voiceOptions.add("cmu_us_awb_cg");
 		
 		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
 
@@ -258,13 +260,16 @@ public class SpellingAid implements ActionListener{
 			}
 			inputText.requestFocusInWindow();
 		} else if (action.equals(voiceCBox)) {
-			String voiceName = (String)voiceCBox.getSelectedItem();
-			System.out.println(voiceName+" selected");
-			switchVoice("voice_" + voiceName); // Added voice_ infront of each call to switchVoice
+			_voice = (String)voiceCBox.getSelectedItem();
+			System.out.println(_voice +" selected");
 		} else {
 			previousInput.setText(previousInput.getText() + e.getActionCommand() + "\n");
 			inputText.setText("");
 		}
+	}
+	
+	public String getVoice() {
+		return _voice;
 	}
 
 	private boolean checkVoice(String voice) {
@@ -283,49 +288,6 @@ public class SpellingAid implements ActionListener{
 			e.printStackTrace();
 		}
 		return false;
-	}
-	
-	private void switchVoice(String voice) {
-		try {
-			ProcessBuilder pb = new ProcessBuilder("bash", "-c", "echo ~");
-			Process pro = pb.start();
-			
-			BufferedReader stdOut = new BufferedReader(new InputStreamReader(pro.getInputStream()));
-
-			String line = stdOut.readLine();
-			
-			stdOut.close();
-			
-			File festivalrc = new File(line + "/.festivalrc");
-			ArrayList<String> fileContents = new ArrayList<>();
-			
-			if (!festivalrc.exists()) {
-				festivalrc.createNewFile();
-			}
-			
-			BufferedReader br = new BufferedReader(new FileReader(festivalrc));
-			
-			while ((line = br.readLine()) != null) {
-				fileContents.add(line);
-			}
-			
-			br.close();
-			
-			BufferedWriter bw = new BufferedWriter(new FileWriter(festivalrc));
-			
-			for (String contents : fileContents) {
-				if (contents.startsWith("(set! voice_default")) {
-					contents = "(set! voice_default '" + voice + ")";
-				}
-				
-				bw.write(contents);
-			}
-			
-			bw.close();
-			
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 	}
 	
 	/**
