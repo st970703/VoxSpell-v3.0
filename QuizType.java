@@ -1,15 +1,5 @@
 public enum QuizType {
-	NEW("wordList"),
-	REVIEW("failedList")
+	NEW,
+	REVIEW
 	;
-
-	private final String quizType;
-
-	private QuizType(String quiz) {
-		this.quizType = quiz;
-	}
-
-	public String getQuizType() {
-		return quizType;
-	}
 }

@@ -1,14 +1,22 @@
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -17,14 +25,24 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.border.Border;
+import javax.swing.border.EtchedBorder;
+
+import com.sun.jna.Native;
+import com.sun.jna.NativeLibrary;
+
+import uk.co.caprica.vlcj.binding.LibVlc;
+import uk.co.caprica.vlcj.runtime.RuntimeUtil;
 
 /**
  * This class creates the GUI and required objects to run the program.
  * @author wayne
  *
  */
-public class SpellingAid extends JFrame implements ActionListener{
+public class SpellingAid implements ActionListener{
 
 	// many many Swing components
 	private JTextField inputText = new JTextField();
@@ -43,7 +61,8 @@ public class SpellingAid extends JFrame implements ActionListener{
 	private JScrollPane _scrollPane;
 	
 	private Quiz _currentQuiz;
-	private List _wordSource;
+	private WordList _wordSource;
+	private WordList _failedWords;
 	
 	private int _level;
 	
@@ -52,13 +71,31 @@ public class SpellingAid extends JFrame implements ActionListener{
 	private JPanel textAndButton = new JPanel();
 	private JScrollPane previousInputScroll;
 	
+	private JPanel mainScreen = new JPanel(new BorderLayout());
+	private JPanel videoScreen = new JPanel(new BorderLayout());
+	
+	private JFrame window;
+	private JPanel overAllPanel = new JPanel(new CardLayout());
+	private JPanel statsPanel = new JPanel(new BorderLayout());
+	private JLabel statsTitle = new JLabel("Statistics (by Level)");
+	
+	private JLabel previousInputTitle = new JLabel("Previous Input");
+	private JPanel previousInputPanel = new JPanel(new BorderLayout());
+	
+	private JLabel menuTitle = new JLabel("Menu");
+	private JPanel menuPanel = new JPanel(new BorderLayout());
+	
+	private ArrayList<String> voiceOptions = new ArrayList<String>();
+	private JComboBox voiceCBox;
+	
 	/**
 	 * Initializes swing components.
 	 */
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public SpellingAid() {
-		super("Spelling Aid V2.0");
-		setSize(900, 400);
-		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+		window = new JFrame("Spelling Aid V2.0");
+		window.setSize(900, 500);
+		window.setDefaultCloseOperation(window.EXIT_ON_CLOSE);
 		newQuizBtn.addActionListener(this);
 		reviewMistakesBtn.addActionListener(this);
 		viewStatsBtn.addActionListener(this);
@@ -66,47 +103,105 @@ public class SpellingAid extends JFrame implements ActionListener{
 		inputText.addActionListener(this);
 		inputText.setEnabled(false);
 		relistenToWord.addActionListener(this);
+		menuTitle.setPreferredSize(new Dimension(100, 30));
+		menuTitle.setHorizontalAlignment(SwingConstants.CENTER);
+		menuTitle.setBorder(BorderFactory.createEtchedBorder(EtchedBorder.LOWERED));
 		menuBtns.add(newQuizBtn);
 		menuBtns.add(reviewMistakesBtn);
 		menuBtns.add(viewStatsBtn);
 		menuBtns.add(clearStatsBtn);
+		menuPanel.add(menuTitle, BorderLayout.NORTH);
+		menuPanel.add(menuBtns, BorderLayout.CENTER);
 		inputArea.add(instructions);
 		// new stuff
-		inputText.setPreferredSize(new Dimension(650, 25));
+		inputText.setPreferredSize(new Dimension(450, 25));
 		textAndButton.add(inputText);
 		textAndButton.add(relistenToWord);
+		
 		inputArea.add(textAndButton);
 		previousInputScroll = new JScrollPane(previousInput);
-		add(inputArea, BorderLayout.SOUTH);
-		add(menuBtns, BorderLayout.WEST);
-		add(previousInputScroll, BorderLayout.CENTER);
+		previousInputTitle.setHorizontalAlignment(SwingConstants.CENTER);
+		previousInputTitle.setPreferredSize(new Dimension(350, 30));
+		previousInputTitle.setBorder(BorderFactory.createEtchedBorder(EtchedBorder.LOWERED));
+		previousInputPanel.add(previousInputTitle, BorderLayout.NORTH);
+		previousInputPanel.add(previousInputScroll, BorderLayout.CENTER);
+		mainScreen.add(inputArea, BorderLayout.SOUTH);
+		mainScreen.add(menuPanel, BorderLayout.WEST);
+		mainScreen.add(previousInputPanel, BorderLayout.CENTER);
 		previousInput.setEditable(false);
-		_wordSource = new List(new File("NZCER-spelling-lists.txt"));
+		_wordSource = new WordList(new File("NZCER-spelling-lists.txt"), QuizType.NEW);
+		_failedWords = new WordList(new File(".failedWords"), QuizType.REVIEW);
 		_stats = new Statistics(_wordSource);
 		_statsTable = new JTable(_stats);
 		_statsTable.getColumnModel().getColumn(4).setPreferredWidth(100);
 		_scrollPane = new JScrollPane(_statsTable);
-		_scrollPane.setPreferredSize(new Dimension(400, 300));
+		_scrollPane.setPreferredSize(new Dimension(350, 300));
 		_statsTable.setFillsViewportHeight(true);
-		add(_scrollPane, BorderLayout.EAST);
+		_statsTable.setRowHeight(28);
+		statsTitle.setHorizontalAlignment(SwingConstants.CENTER);
+		statsTitle.setPreferredSize(new Dimension(350, 30));
+		statsTitle.setBorder(BorderFactory.createEtchedBorder(EtchedBorder.LOWERED));
+		statsPanel.add(statsTitle, BorderLayout.NORTH);
+		statsPanel.add(_scrollPane, BorderLayout.CENTER);
+		mainScreen.add(statsPanel, BorderLayout.EAST);
 		
-		//Asking user for which spelling level they want to start with
-				boolean isAnswer = false;
-				while (!isAnswer) {
-					Object[] levels = new String[_wordSource.numOfLevels()];
-					for (int i = 0; i < _wordSource.numOfLevels(); i++) {
-						levels[i] = "Level " + (i + 1);
-					}
-					
-					String answer = (String)JOptionPane.showInputDialog(this, "Please pick a spelling level to start with: ", "Spelling Level", JOptionPane.QUESTION_MESSAGE, null, levels, levels[0]);
-					int level = Integer.parseInt(answer.split(" ")[1]); // This is where to continue coding from. I haven't finished this line.
-					if (level <= _wordSource.numOfLevels() ) {
-						_level = level;
-						System.out.println("Level "+_level+" selected");
-						break;
-					}
+		overAllPanel.add(mainScreen, "MAIN");
+		overAllPanel.add(videoScreen, "VIDEO");
+		
+		window.add(overAllPanel);
+		
+		voiceOptions.add("akl_nz_jdt_diphone");
+		voiceOptions.add("rab_diphone");
+		voiceOptions.add("kal_diphone");
+		voiceOptions.add("cmu_us_rms_arctic_clunits"); // Added _clunits so that it would work
+		voiceOptions.add("cmu_us_slt_arctic");
+		voiceOptions.add("cmu_us_bdl_arctic");
+		voiceOptions.add("cmu_us_clb_arctic");
+		
+		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
 
+			@Override
+			protected Void doInBackground() throws Exception {
+				File file = new File("big_buck_bunny_1_minute_aecho.avi");
+				if (!file.exists() && checkVoice("ffmpeg")) {
+					ProcessBuilder pb = new ProcessBuilder("bash", "-c", "ffmpeg -i big_buck_bunny_1_minute.avi -af aecho big_buck_bunny_1_minute_aecho.avi");
+					Process pro = pb.start();
 				}
+				return null;	
+			}
+		};
+		worker.execute();	
+		
+		for (int i = 0; i < voiceOptions.size(); i++) {
+			if (!checkVoice(voiceOptions.get(i) ) ) {
+				voiceOptions.remove(i );
+				i = -1;
+			}
+		}
+		
+		voiceCBox = new JComboBox((String[]) voiceOptions.toArray(new String[0]) );
+		voiceCBox.addActionListener(this);
+		textAndButton.add(voiceCBox);
+
+		//Asking user for which spelling level they want to start with
+		boolean isAnswer = false;
+		while (!isAnswer) {
+			Object[] levels = new String[_wordSource.numOfLevels()];
+			for (int i = 0; i < _wordSource.numOfLevels(); i++) {
+				levels[i] = "Level " + (i + 1);
+			}
+
+			String answer = (String)JOptionPane.showInputDialog(window, "Please pick a spelling level to start with: ", "Spelling Level", JOptionPane.QUESTION_MESSAGE, null, levels, levels[0]);
+			if (answer != null) {
+				int level = Integer.parseInt(answer.split(" ")[1]); // This is where to continue coding from. I haven't finished this line.
+				if (level <= _wordSource.numOfLevels() ) {
+					_level = level;
+					break;
+				}
+			}
+		}
+		
+		window.setVisible(true);
 	}
 	
 	/**
@@ -120,24 +215,24 @@ public class SpellingAid extends JFrame implements ActionListener{
 		if (action.equals(newQuizBtn)) {
 		//if (action.equals(newQuizBtn.getActionCommand())) {
 			removeQuizListeners();
-			_currentQuiz = new Quiz(QuizType.NEW, _level, _stats); // change the input number here to change level for now
+			_currentQuiz = new Quiz(_level, _stats, this, _wordSource); // change the input number here to change level for now
 			inputText.addActionListener(_currentQuiz);
 			instructions.setText("Spell the word below and press Enter: ");
 			inputText.setEnabled(true);
 			previousInput.setText("");
 			inputText.requestFocusInWindow();
-			boolean status = _currentQuiz.sayNextWord();
+			boolean status = _currentQuiz.sayNextWord(null);
 			if (!status) { inputText.setEnabled(false); };
 		} else if (action.equals(reviewMistakesBtn)) {	
 		//} else if (action.equals(reviewMistakesBtn.getActionCommand())) {
 			removeQuizListeners();
-			_currentQuiz = new Quiz(QuizType.REVIEW, 1, _stats);
+			_currentQuiz = new Quiz( _level, _stats, this, _failedWords);
 			inputText.addActionListener(_currentQuiz);
 			instructions.setText("Spell the word below and press Enter: ");
 			inputText.setEnabled(true);
 			previousInput.setText("");
 			inputText.requestFocusInWindow();
-			boolean status = _currentQuiz.sayNextWord();
+			boolean status = _currentQuiz.sayNextWord(null);
 			if (!status) { inputText.setEnabled(false); };
 		//} else if (action.equals(viewStatsBtn.getActionCommand())) {
 		} else if (action.equals(viewStatsBtn)) {
@@ -162,9 +257,74 @@ public class SpellingAid extends JFrame implements ActionListener{
 				_currentQuiz.repeatWordWithNoPenalty();
 			}
 			inputText.requestFocusInWindow();
+		} else if (action.equals(voiceCBox)) {
+			String voiceName = (String)voiceCBox.getSelectedItem();
+			System.out.println(voiceName+" selected");
+			switchVoice("voice_" + voiceName); // Added voice_ infront of each call to switchVoice
 		} else {
 			previousInput.setText(previousInput.getText() + e.getActionCommand() + "\n");
 			inputText.setText("");
+		}
+	}
+
+	private boolean checkVoice(String voice) {
+		try {
+			ProcessBuilder pb = new ProcessBuilder("bash", "-c", "locate " + voice);
+			Process pro = pb.start();
+			
+			BufferedReader stdOut = new BufferedReader(new InputStreamReader(pro.getInputStream()));
+			
+			String line = stdOut.readLine();
+			
+			if (line != null) {
+				return true;
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+	
+	private void switchVoice(String voice) {
+		try {
+			ProcessBuilder pb = new ProcessBuilder("bash", "-c", "echo ~");
+			Process pro = pb.start();
+			
+			BufferedReader stdOut = new BufferedReader(new InputStreamReader(pro.getInputStream()));
+
+			String line = stdOut.readLine();
+			
+			stdOut.close();
+			
+			File festivalrc = new File(line + "/.festivalrc");
+			ArrayList<String> fileContents = new ArrayList<>();
+			
+			if (!festivalrc.exists()) {
+				festivalrc.createNewFile();
+			}
+			
+			BufferedReader br = new BufferedReader(new FileReader(festivalrc));
+			
+			while ((line = br.readLine()) != null) {
+				fileContents.add(line);
+			}
+			
+			br.close();
+			
+			BufferedWriter bw = new BufferedWriter(new FileWriter(festivalrc));
+			
+			for (String contents : fileContents) {
+				if (contents.startsWith("(set! voice_default")) {
+					contents = "(set! voice_default '" + voice + ")";
+				}
+				
+				bw.write(contents);
+			}
+			
+			bw.close();
+			
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 	
@@ -198,16 +358,95 @@ public class SpellingAid extends JFrame implements ActionListener{
 		}
 	}
 	
+	public void levelCompleted() {
+		//create pop up to ask user either move up, stay at level, or play video
+		Object[] options = {"Move up a Spelling level", "Stay at current Spelling level", "Play reward video", "Play reward video with Echo Effect"};
+		while (true) {
+			int n = JOptionPane.showOptionDialog(window, "Please select an option:", "Congratulations!", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+			
+			if (n == 0) {
+				if (_level < _wordSource.numOfLevels()) {
+					_level++;
+				}
+				break;
+			} else if (n == 1) {
+				break;
+			} else if (n == 2) {
+				playVideo("big_buck_bunny_1_minute.avi");
+				break;
+			} else if (n == 3) {
+				System.out.println("Play reward video with Echo Effect");
+				File file = new File("big_buck_bunny_1_minute_aecho.avi");
+				if (checkVoice("ffmpeg") && file.exists() ) {
+					System.out.println ("Processing video by ffmpeg");
+					playVideo("big_buck_bunny_1_minute_aecho.avi");
+					break;
+				} else if (!checkVoice("ffmpeg")) {
+					JOptionPane.showMessageDialog(null, "ffmpeg not installed.", "ffmpeg missing!", JOptionPane.ERROR_MESSAGE);
+				} else if (!file.exists()) {
+					JOptionPane.showMessageDialog(null, "Cannot find video file.", "Video File missing!", JOptionPane.ERROR_MESSAGE);
+				}
+			}
+		}
+	}
+	
+	private void playVideo(final String videoName) {
+		refreshVideoScreen();
+		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+
+			@Override
+			protected Void doInBackground() throws Exception {
+				NativeLibrary.addSearchPath(
+						RuntimeUtil.getLibVlcLibraryName(), "/Applications/vlc-2.0.0/VLC.app/Contents/MacOS/lib"
+						);
+				Native.loadLibrary(RuntimeUtil.getLibVlcLibraryName(), LibVlc.class);
+
+				new RewardMediaPlayer(videoScreen, SpellingAid.this, videoName);
+
+				return null;
+			}
+			
+		};
+		
+		worker.execute();
+		switchScreens("VIDEO");
+	}
+	
+	private void refreshVideoScreen() {
+		overAllPanel.remove(videoScreen);
+		videoScreen = new JPanel(new BorderLayout());
+		overAllPanel.add(videoScreen, "VIDEO");
+	}
+	
+	public void switchScreens(String screen) {
+		CardLayout cl = (CardLayout)(overAllPanel.getLayout());
+		cl.show(overAllPanel, screen);
+	}
+	
+	private static void deleteEchoVideo() {
+		File videoFile = new File("./big_buck_bunny_1_minute_aecho.avi");		
+		if (videoFile.exists()) {
+			videoFile.delete();
+		}
+	}
+	
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(new Runnable() {
 
 			@Override
 			public void run() {
-				SpellingAid frame = new SpellingAid();
-				frame.setVisible(true);
+				SpellingAid spell = new SpellingAid();
 			}
-			
+					
 		});
-	}
+		
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+		      public void run() {
+		        System.out.println("Running Shutdown Hook");
+		        deleteEchoVideo();
+		      }
+		    });
+		
+	} 
 }
 
