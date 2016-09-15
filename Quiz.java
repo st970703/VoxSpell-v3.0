@@ -1,25 +1,13 @@
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 
 import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 
-import com.sun.jna.Native;
-import com.sun.jna.NativeLibrary;
-
-import uk.co.caprica.vlcj.binding.LibVlc;
-import uk.co.caprica.vlcj.runtime.RuntimeUtil;
-
 /**
- * This class represents a quiz, either taking words from wordlist or failedlist.
+ * This class represents a quiz, taking words from the provided WordList object. 
  * @author wayne
  *
  */
@@ -29,21 +17,18 @@ public class Quiz implements ActionListener{
 	private int _totalWords;
 	private int _attempts;
 	private int _masteredWords;
-//	private File _wordList;
-//	private File _failedList = new File(".failedlist");
-//	private File _faultedList = new File(".faultedlist");
 	private ArrayList<ArrayList<String>> _lists;
 	private ArrayList<String> _words; 
 	private ArrayList<Integer> _previousWords;
-	
 	private Statistics _stats;
 	private SpellingAid _parent;
-	
 	private WordList _wordList;
 	
 	/**
-	 * Initializes most private fields, depending on which quiz type is needed.
-	 * @param quizType
+	 * Initializes fields, selects words for the quiz, and checks that there are enough words to perform a quiz.
+	 * @param level - the spelling level of the quiz to be created
+	 * @param parent - the SpellingAid which called the constructor
+	 * @param wordList - the WordList object that words should be drawn from
 	 */
 	public Quiz(int level, SpellingAid parent, WordList wordList) {
 		_parent = parent;
@@ -63,6 +48,12 @@ public class Quiz implements ActionListener{
 		}
 	}
 	
+	/**
+	 * Selects 10 or less random words from the WordList, to be used in the quiz. Only selects less than 10 words
+	 * if there are less than 10 words to select from. In those situations, it selects all words available, in 
+	 * random order.
+	 * @param level - the spelling level that the words should be chosen from
+	 */
 	private void selectWords(int level) {
 		ArrayList<String> tempList = _lists.get(level - 1);
 		int pos = 0;
@@ -71,47 +62,13 @@ public class Quiz implements ActionListener{
 			_words.add(tempList.get(pos));
 		}
 	}
-	
-	/**
-	 * Grabs words from file and stores in field.
-	 */
-	private ArrayList<ArrayList<String>> getWords(File wordList) {
-		BufferedReader br = null;
-		ArrayList<ArrayList<String>> lists = new ArrayList<>();
-		
-		try {
-			String line;
-			
-			br = new BufferedReader(new FileReader(wordList.getAbsoluteFile()));
-			
-			ArrayList<String> currentList = new ArrayList<>();
-			
-			while ((line = br.readLine()) != null) {
-				//do stuff with each line
-				
-				if (line.startsWith("%")) {
-					currentList = new ArrayList<>();
-					lists.add(currentList);
-				} else {
-					currentList.add(line);
-				}
-			}
-		} catch (IOException ex) {
-			ex.printStackTrace();
-		}
-		
-		try {
-			br.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		return lists;
-	}
 
 	/**
-	 * Increments wordcount field, keeping track of how many words have been finished, and calls sayWord with a random word from the wordlist.
-	 * @return
+	 * If there are more words left to test, calls sayWord with the next word, prefixing it with the provided line. If all the words have 
+	 * been tested, the method notifies the user that the quiz is finished and calls {@link SpellingAid#levelCompleted()} if enough words
+	 * were spelled correctly.
+	 * @param line - String to prefix the word with
+	 * @return boolean indicating whether or not a word was pronounced
 	 */
 	public boolean sayNextWord(String line) {
 		_wordCount++;
@@ -136,13 +93,16 @@ public class Quiz implements ActionListener{
 		}
 	}
 	
+	/**
+	 * Repeats the word, allowing the user to relisten to it.
+	 */
 	public void repeatWordWithNoPenalty() {
 		String word = _words.get(_previousWords.get(_previousWords.size() - 1));
 		sayWord(word);
 	}
 	
 	/**
-	 * Repeats the last word pronounced.
+	 * Repeats the last word pronounced, when the user has incorrectly spelled it once.
 	 */
 	public void repeatWord() {
 		String word = _words.get(_previousWords.get(_previousWords.size() - 1));
@@ -150,7 +110,7 @@ public class Quiz implements ActionListener{
 	}
 	
 	/**
-	 * Spells the word out for the user.
+	 * Spells the word out for the user, used in review mode when word was failed.
 	 */
 	public void spellWord() {
 		String word = _words.get(_previousWords.get(_previousWords.size() - 1));
@@ -211,19 +171,20 @@ public class Quiz implements ActionListener{
 			_attempts++;
 			// if the user spells word correctly
 			if (userWord.toLowerCase().equals(_words.get(_previousWords.get(_previousWords.size() - 1)).toLowerCase())) {
-				if (_attempts == 2) { // add stats depending on number of attempts so far
+				// if this is the second attempt at spelling this word
+				if (_attempts == 2) { 
 					_stats.addFaulted(userWord);
-				} else if (_attempts == 1) {
+				} else if (_attempts == 1) { // if this is the first attempt at spelling this word
 					_stats.addMastered(userWord);
 					_masteredWords++;
 					_wordList.removeFromFailedList(userWord.toLowerCase());
 				}
 				sayNextWord("Correct! ... "); // move onto the next word
 			} else { // if the user spells the word wrong
-				if (_attempts == 1) {
+				if (_attempts == 1) { // if this was their first attempt 
 					repeatWord();
 				} else if (_attempts == 2) { // if the user fails the word
-					if (_wordList.getQuizType().equals(QuizType.NEW)) { //if this is a new quiz, remove from / add to appropriate lists and add stats
+					if (_wordList.getQuizType().equals(QuizType.NEW)) { //if this is a new quiz, remove from/add to appropriate lists and add stats
 						_stats.addFailed(_words.get(_previousWords.get(_previousWords.size() - 1)));
 						_wordList.addToFailedList(_words.get(_previousWords.get(_previousWords.size() - 1)));
 						sayNextWord("Incorrect. ... ");
@@ -255,7 +216,7 @@ public class Quiz implements ActionListener{
 	}
 	
 	/**
-	 * Checks the given string if it consists of only A-Z, a-z and spaces.
+	 * Checks the given string if it consists of only A-Z, a-z , apostrophes, and spaces.
 	 * @param input - string to check validity of
 	 * @return - true if the string is valid, false otherwise
 	 */
@@ -266,13 +227,5 @@ public class Quiz implements ActionListener{
 			}
 		}
 		return true;
-	}
-	
-	private int numOfLevels() {
-		File list = new File("NZCER-spelling-lists.txt");
-		
-		ArrayList<ArrayList<String>> tempList = getWords(list);
-		
-		return tempList.size();
 	}
 }
