@@ -131,7 +131,7 @@ public class SpellingAid implements ActionListener{
 		previousInput.setEditable(false);
 		_wordSource = new WordList(new File("NZCER-spelling-lists.txt"), QuizType.NEW);
 		_failedWords = new WordList(new File(".failedWords"), QuizType.REVIEW);
-		_stats = new Statistics(_wordSource);
+		_stats = Statistics.getInstance();
 		_statsTable = new JTable(_stats);
 		_statsTable.getColumnModel().getColumn(4).setPreferredWidth(100);
 		_scrollPane = new JScrollPane(_statsTable);
@@ -215,7 +215,7 @@ public class SpellingAid implements ActionListener{
 		if (action.equals(newQuizBtn)) {
 		//if (action.equals(newQuizBtn.getActionCommand())) {
 			removeQuizListeners();
-			_currentQuiz = new Quiz(_level, _stats, this, _wordSource); // change the input number here to change level for now
+			_currentQuiz = new Quiz(_level, this, _wordSource); // change the input number here to change level for now
 			inputText.addActionListener(_currentQuiz);
 			instructions.setText("Spell the word below and press Enter: ");
 			inputText.setEnabled(true);
@@ -226,7 +226,7 @@ public class SpellingAid implements ActionListener{
 		} else if (action.equals(reviewMistakesBtn)) {	
 		//} else if (action.equals(reviewMistakesBtn.getActionCommand())) {
 			removeQuizListeners();
-			_currentQuiz = new Quiz( _level, _stats, this, _failedWords);
+			_currentQuiz = new Quiz( _level, this, _failedWords);
 			inputText.addActionListener(_currentQuiz);
 			instructions.setText("Spell the word below and press Enter: ");
 			inputText.setEnabled(true);

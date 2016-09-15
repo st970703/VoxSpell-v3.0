@@ -24,10 +24,16 @@ public class Statistics extends AbstractTableModel{
 	private final String[] columnNames = {"Level", "Mastered", "Faulted", "Failed", "No Attempts"};
 	private ArrayList<ArrayList<String>> _lists;
 	
+	private static Statistics _stats = new Statistics(new WordList(new File("NZCER-spelling-lists.txt"), QuizType.NEW));
+	
+	public static Statistics getInstance() {
+		return _stats;
+	}
+	
 	/**
 	 * Initializes the fields and then loads previously stored data from .stats file
 	 */
-	public Statistics(WordList list) {
+	private Statistics(WordList list) {
 		_words = new ArrayList<>();
 		_sortedWords = new ArrayList<>();
 		_masteredCount = new ArrayList<>();
