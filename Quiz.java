@@ -147,13 +147,13 @@ public class Quiz implements ActionListener{
 					
 					BufferedWriter bw = new BufferedWriter(new FileWriter(file));
 					
-					bw.write("(" + "voice_" + voice + ")");
+					bw.write("(" + "voice_" + voice + ")\n");
 					
 					bw.write("(SayText \"" + word + " ... ... ... ... \")");
 					
 					bw.close();
 					
-					ProcessBuilder pb = new ProcessBuilder("bash", "-c", "festival .sayText.scm");
+					ProcessBuilder pb = new ProcessBuilder("bash", "-c", "festival -b .sayText.scm");
 					
 					Process pro = pb.start();
 					
