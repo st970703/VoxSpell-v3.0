@@ -1,17 +1,16 @@
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 
 import javax.swing.JOptionPane;
+import javax.swing.SwingWorker;
 
 /**
- * This class represents a quiz, either taking words from wordlist or failedlist.
+ * This class represents a quiz, taking words from the provided WordList object. 
  * @author wayne
  *
  */
@@ -20,181 +19,156 @@ public class Quiz implements ActionListener{
 	private int _wordCount;
 	private int _totalWords;
 	private int _attempts;
-	private File _wordList;
-	private File _failedList = new File(".failedlist");
-	private File _faultedList = new File(".faultedlist");
+	private int _masteredWords;
 	private ArrayList<ArrayList<String>> _lists;
 	private ArrayList<String> _words; 
 	private ArrayList<Integer> _previousWords;
-	private QuizType _quizType; 
-	
 	private Statistics _stats;
+	private SpellingAid _parent;
+	private WordList _wordList;
 	
 	/**
-	 * Initializes most private fields, depending on which quiz type is needed.
-	 * @param quizType
+	 * Initializes fields, selects words for the quiz, and checks that there are enough words to perform a quiz.
+	 * @param level - the spelling level of the quiz to be created
+	 * @param parent - the SpellingAid which called the constructor
+	 * @param wordList - the WordList object that words should be drawn from
 	 */
-	public Quiz(QuizType quizType, int level, Statistics stats) {
-		_stats = stats;
+	public Quiz(int level, SpellingAid parent, WordList wordList) {
+		_parent = parent;
+		_stats = Statistics.getInstance();
 		_wordCount = 0;
+		_masteredWords = 0;
 		_previousWords = new ArrayList<>();
 		_words = new ArrayList<>();
+		_lists = wordList.getWords();
+		_wordList = wordList;
 		
-		if (quizType.getQuizType().equals(QuizType.NEW.getQuizType())) {
-			_wordList = new File("NZCER-spelling-lists.txt");
-		} else {
-			_wordList = new File(".failedlist");
-		}
-		
-		_quizType = quizType;
-		
-		if (!_wordList.exists()) {
-			try {
-				_wordList.createNewFile();
-				initializeList(_wordList);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		_lists = getWords(_wordList);
 		selectWords(level);
 		_totalWords = Math.min(_words.size(), 10);
+		
 		if (_totalWords == 0) {
 			JOptionPane.showMessageDialog(null, "Not enough words to make a quiz!", "Uh oh!", JOptionPane.ERROR_MESSAGE);
 		}
 	}
 	
-	private void initializeList(File list) {
-		try {
-			BufferedWriter bw = new BufferedWriter(new FileWriter(list.getAbsoluteFile()));
-			
-			for (int i = 0; i < numOfLevels(); i++) {
-				bw.write("%Level " + (i + 1) + "\n");
-			}
-			
-			bw.close();
-
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-	
+	/**
+	 * Selects 10 or less random words from the WordList, to be used in the quiz. Only selects less than 10 words
+	 * if there are less than 10 words to select from. In those situations, it selects all words available, in 
+	 * random order.
+	 * @param level - the spelling level that the words should be chosen from
+	 */
 	private void selectWords(int level) {
 		ArrayList<String> tempList = _lists.get(level - 1);
 		int pos = 0;
-		for (int i = 0; i < 10; i++) {
+		for (int i = 0; i < Math.min(10, tempList.size()); i++) {
 			while (_words.contains(tempList.get(pos = (int)(Math.random() * tempList.size())))) { }
 			_words.add(tempList.get(pos));
 		}
 	}
-	
-	/**
-	 * Grabs words from file and stores in field.
-	 */
-	private ArrayList<ArrayList<String>> getWords(File wordList) {
-		BufferedReader br = null;
-		ArrayList<ArrayList<String>> lists = new ArrayList<>();
-		
-		try {
-			String line;
-			
-			br = new BufferedReader(new FileReader(wordList.getAbsoluteFile()));
-			
-			ArrayList<String> currentList = new ArrayList<>();
-			
-			while ((line = br.readLine()) != null) {
-				//do stuff with each line
-				
-				if (line.startsWith("%")) {
-					currentList = new ArrayList<>();
-					lists.add(currentList);
-				} else {
-					currentList.add(line);
-				}
-			}
-		} catch (IOException ex) {
-			ex.printStackTrace();
-		}
-		
-		try {
-			br.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		return lists;
-	}
 
 	/**
-	 * Increments wordcount field, keeping track of how many words have been finished, and calls sayWord with a random word from the wordlist.
-	 * @return
+	 * If there are more words left to test, calls sayWord with the next word, prefixing it with the provided line. If all the words have 
+	 * been tested, the method notifies the user that the quiz is finished and calls {@link SpellingAid#levelCompleted()} if enough words
+	 * were spelled correctly.
+	 * @param line - String to prefix the word with
+	 * @return boolean indicating whether or not a word was pronounced
 	 */
-	public boolean sayNextWord() {
+	public boolean sayNextWord(String line) {
 		_wordCount++;
 		if (_wordCount <= _totalWords) {
 			_attempts = 0;
 
 			_previousWords.add(_wordCount - 1);
-			sayWord(_words.get(_wordCount - 1));
+			if (line == null) {
+				sayWord(_words.get(_wordCount - 1));
+			} else {
+				sayWord(line + " " + _words.get(_wordCount - 1));
+			}
 			return true;
 		} else {
 			sayWord("Quiz is finished.");
+			// call method in spellingaid to potentially shift up levels
+			if (_masteredWords >= 9 && _wordList.getQuizType() == QuizType.NEW) {
+				// call method from SpellingAid, which allows user to move up levels
+				_parent.levelCompleted();
+			}
 			return false;
 		}
 	}
 	
+	/**
+	 * Repeats the word, allowing the user to relisten to it.
+	 */
 	public void repeatWordWithNoPenalty() {
 		String word = _words.get(_previousWords.get(_previousWords.size() - 1));
 		sayWord(word);
 	}
 	
 	/**
-	 * Repeats the last word pronounced.
+	 * Repeats the last word pronounced, when the user has incorrectly spelled it once.
 	 */
 	public void repeatWord() {
 		String word = _words.get(_previousWords.get(_previousWords.size() - 1));
-		sayWord("Incorrect, Please try again. ");
-		sayWord(word);
-		sayWord(word);
+		sayWord("Incorrect, Please try again ... ... " + word + ", ... ... " + word);
 	}
 	
 	/**
-	 * Spells the word out for the user.
+	 * Spells the word out for the user, used in review mode when word was failed.
 	 */
 	public void spellWord() {
 		String word = _words.get(_previousWords.get(_previousWords.size() - 1));
-		String spelling = word + " is spelled ";
-		sayWord(spelling);
+		String spelling = word + " is spelled ... ";
 		
 		for (int i = 0; i < word.length(); i++) {
-			sayWord(word.charAt(i) + "");
+			spelling += word.charAt(i) + " ... ";
 		}
+		
+		sayWord(spelling);
 	}
 	
 	/**
 	 * Uses festival to pronounce the string passed in.
 	 * @param word - a String containing what you want to pronounce
 	 */
-	private void sayWord(String word) {
-		try {
-			String command = "echo " + word + " | festival --tts ";
-			ProcessBuilder pb = new ProcessBuilder("bash", "-c", command);
+	private void sayWord(final String word) {
+		System.out.println(word);
+		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
 
+			@Override
+			protected Void doInBackground() throws Exception {
+				try {
+					File file = new File(".sayText.scm");
 
-			Process process = pb.start();
-			
-			try {
-				process.waitFor();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+					if (!file.exists()) {
+						file.createNewFile();
+					}
+					
+					String voice = _parent.getVoice();
+					
+					BufferedWriter bw = new BufferedWriter(new FileWriter(file));
+					
+					bw.write("(" + "voice_" + voice + ")\n");
+					
+					bw.write("(SayText \"" + word + " ... ... ... ... \")");
+					
+					bw.close();
+					
+					ProcessBuilder pb = new ProcessBuilder("bash", "-c", "festival -b .sayText.scm");
+					
+					Process pro = pb.start();
+					
+					pro.waitFor();
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				
+				return null;
 			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+			
+		};
+		worker.execute();
 	}
 
 	/**
@@ -212,140 +186,34 @@ public class Quiz implements ActionListener{
 			_attempts++;
 			// if the user spells word correctly
 			if (userWord.toLowerCase().equals(_words.get(_previousWords.get(_previousWords.size() - 1)).toLowerCase())) {
-				sayWord("Correct!");
-				if (_attempts == 2) { // add and remove from appropriate lists, add stats, all depending on number of attempts so far
-					addToList(_faultedList);
-					removeFromList(_failedList);
+				// if this is the second attempt at spelling this word
+				if (_attempts == 2) { 
 					_stats.addFaulted(userWord);
-				} else if (_attempts == 1) {
-					removeFromList(_failedList);
-					removeFromList(_faultedList);
+				} else if (_attempts == 1) { // if this is the first attempt at spelling this word
 					_stats.addMastered(userWord);
+					_masteredWords++;
+					_wordList.removeFromFailedList(userWord.toLowerCase());
 				}
-				sayNextWord(); // move onto the next word
+				sayNextWord(" ... ... Correct! ... "); // move onto the next word
 			} else { // if the user spells the word wrong
-				if (_attempts == 1) {
+				if (_attempts == 1) { // if this was their first attempt 
 					repeatWord();
 				} else if (_attempts == 2) { // if the user fails the word
-					if (_quizType.getQuizType().equals(QuizType.NEW.getQuizType())) { //if this is a new quiz, remove from / add to appropriate lists and add stats
-						sayWord("Incorrect.");
-						removeFromList(_faultedList);
-						addToList(_failedList);
+					if (_wordList.getQuizType().equals(QuizType.NEW)) { //if this is a new quiz, remove from/add to appropriate lists and add stats
 						_stats.addFailed(_words.get(_previousWords.get(_previousWords.size() - 1)));
-						sayNextWord();
+						_wordList.addToFailedList(_words.get(_previousWords.get(_previousWords.size() - 1)));
+						sayNextWord("Incorrect. ... ");
 					} else { //if this is a review quiz, give user another chance to spell word, spelling it out for them
 						spellWord(); //however, don't remove from failedlist, even if they get it right, because they clearly need more practice
 						_stats.addFailed(_words.get(_previousWords.get(_previousWords.size() - 1)));
 					}
 				} else { //if they fail the extra try they get in review quizzes
-					sayWord("Incorrect.");
-					sayNextWord();
+					sayNextWord(" ... ... Incorrect. ... ");
 				}
 			}
 		}
 	}
 	
-	/**
-	 * Removes the most recent word from the given list.
-	 * @param list - list to remove the most recent word from
-	 */
-	private void removeFromList(File list) {
-		ArrayList<String> wordsInList = new ArrayList<>();
-
-		BufferedReader br = null;
-
-		try {
-			if (!list.exists()) {
-				list.createNewFile();
-			}
-
-			String line;
-
-			br = new BufferedReader(new FileReader(list));
-
-			while ((line = br.readLine()) != null) {
-				//do stuff with each line
-				wordsInList.add(line);
-			}
-		} catch (IOException ex) {
-			ex.printStackTrace();
-		}
-		
-		if (wordsInList.contains(_words.get(_previousWords.get(_previousWords.size() - 1)))) {
-			try {
-				BufferedWriter bw = new BufferedWriter(new FileWriter(list.getAbsoluteFile()));
-
-				for (String word : wordsInList) {
-					if (!word.equals(_words.get(_previousWords.get(_previousWords.size() - 1)))) {
-						bw.write(word + "\n");
-					}
-				}
-
-				bw.close();
-
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		
-		try {
-			br.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	/**
-	 * Adds the most recent word to the given list.
-	 * @param list - list to add the most recent word to
-	 */
-	private void addToList(File list) {
-		ArrayList<String> wordsInList = new ArrayList<>();
-		
-		BufferedReader br = null;
-		
-		try {
-			if (!list.exists()) {
-				list.createNewFile();
-			}
-			
-			String line;
-			
-			br = new BufferedReader(new FileReader(list));
-			
-			while ((line = br.readLine()) != null) {
-				//do stuff with each line
-				wordsInList.add(line);
-			}
-		} catch (IOException ex) {
-			ex.printStackTrace();
-		}
-
-		if (!wordsInList.contains(_words.get(_previousWords.get(_previousWords.size() - 1)))) {
-			try {
-				BufferedWriter bw = new BufferedWriter(new FileWriter(list.getAbsoluteFile()));
-				
-				for (String word : wordsInList) {
-					bw.write(word + "\n");
-				}
-				
-				bw.write(_words.get(_previousWords.get(_previousWords.size() - 1)) + "\n");
-				
-				bw.close();
-
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		
-		try {
-			br.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
 	
 	/**
 	 * Removes the spaces from the given string.
@@ -363,7 +231,7 @@ public class Quiz implements ActionListener{
 	}
 	
 	/**
-	 * Checks the given string if it consists of only A-Z, a-z and spaces.
+	 * Checks the given string if it consists of only A-Z, a-z , apostrophes, and spaces.
 	 * @param input - string to check validity of
 	 * @return - true if the string is valid, false otherwise
 	 */
@@ -374,13 +242,5 @@ public class Quiz implements ActionListener{
 			}
 		}
 		return true;
-	}
-	
-	private int numOfLevels() {
-		File list = new File("NZCER-spelling-lists.txt");
-		
-		ArrayList<ArrayList<String>> tempList = getWords(list);
-		
-		return tempList.size();
 	}
 }

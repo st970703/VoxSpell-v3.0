@@ -13,21 +13,39 @@ import javax.swing.table.AbstractTableModel;
  * @author wayne
  *
  */
+@SuppressWarnings("serial")
 public class Statistics extends AbstractTableModel{
 	private ArrayList<String> _words;
 	private ArrayList<String> _sortedWords;
 	private ArrayList<Integer> _masteredCount;
 	private ArrayList<Integer> _faultedCount;
 	private ArrayList<Integer> _failedCount;
+	/**
+	 * Contains an ArrayList containing ArrayLists which contain ArrayLists of Strings. Outer ArrayList organizes the inside ArrayLists into
+	 * Mastered, Faulted, Failed, and No Attempts. The middle ArrayLists then organizes each section by Spelling Level. The inner ArrayLists
+	 * hold the words, for each level, that have been Mastered, Faulted, Failed, and No Attempts.
+	 */
 	private ArrayList<ArrayList<ArrayList<String>>> _levelCounts; //0 = mastered, 1 = faulted, 2 = failed, 3 = no attempts
-	// rip going to need ArrayList<ArrayList<ArrayList<String>>>
 	private final String[] columnNames = {"Level", "Mastered", "Faulted", "Failed", "No Attempts"};
 	private ArrayList<ArrayList<String>> _lists;
 	
 	/**
+	 * Contains the single instance of Statistics
+	 */
+	private static Statistics _stats = new Statistics(new WordList(new File("NZCER-spelling-lists.txt"), QuizType.NEW));
+	
+	/**
+	 * Returns the single instance of Statistics
+	 * @return - returns the only instance of Statistics
+	 */
+	public static Statistics getInstance() {
+		return _stats;
+	}
+	
+	/**
 	 * Initializes the fields and then loads previously stored data from .stats file
 	 */
-	public Statistics(List list) {
+	private Statistics(WordList list) {
 		_words = new ArrayList<>();
 		_sortedWords = new ArrayList<>();
 		_masteredCount = new ArrayList<>();
@@ -39,6 +57,12 @@ public class Statistics extends AbstractTableModel{
 		loadStats();
 	}
 	
+	/**
+	 * Removes given word from each list in _levelCounts, adding the given word to the specified list.
+	 * @param listToAddTo - the index of the list to add to (0 = mastered, 1 = faulted, 2 = failed, 3 = no attempts)
+	 * @param word - the word to add/remove from lists
+	 * @param level - the spelling level of the word - 1
+	 */
 	private void modifyLevelCount(int listToAddTo, String word, int level) {
 		for (int i = 0; i < _levelCounts.size(); i++) {
 			if (listToAddTo != i) {
@@ -51,6 +75,9 @@ public class Statistics extends AbstractTableModel{
 		}
 	}
 
+	/**
+	 * Initializes the _levelCounts field with empty ArrayLists.
+	 */
 	private void initializeLevelCount() {		
 		for (int i = 0; i < 3; i++) {
 			_levelCounts.add(new ArrayList<ArrayList<String>>());
@@ -63,6 +90,9 @@ public class Statistics extends AbstractTableModel{
 		initializeNoAttempts();
 	}
 	
+	/**
+	 * Initializes the No Attempts list in _levelCounts with all words in the word list.
+	 */
 	private void initializeNoAttempts() {
 		_levelCounts.add(new ArrayList<ArrayList<String>>());
 		for (int i = 0; i < _lists.size(); i++) {
@@ -74,7 +104,7 @@ public class Statistics extends AbstractTableModel{
 	}
 	
 	/**
-	 * Add to the mastered count and sorts
+	 * Add to the mastered count and sorts. Also adds to the level count.
 	 * @param word - the word to add stats to
 	 */
 	public void addMastered(String word) {
@@ -93,7 +123,7 @@ public class Statistics extends AbstractTableModel{
 	}
 	
 	/**
-	 * Add to the faulted count and sorts
+	 * Add to the faulted count and sorts. Also adds to the level count.
 	 * @param word - the word to add stats to
 	 */
 	public void addFaulted(String word) {
@@ -112,7 +142,7 @@ public class Statistics extends AbstractTableModel{
 	}
 	
 	/**
-	 * Add to the failed count and sorts
+	 * Add to the failed count and sorts. Also adds to the level count.
 	 * @param word - the word to add stats to
 	 */
 	public void addFailed(String word) {
@@ -130,11 +160,14 @@ public class Statistics extends AbstractTableModel{
 		saveStats();
 	}
 	
+	/**
+	 * Uses the modifyLevelCount() to add the given word to _levelCount.
+	 * @param list - the list section to add word to (mastered, faulted, failed, no attempts)
+	 * @param word - the word to add to _levelCounts
+	 */
 	private void addLevelCount(int list, String word) {
 		for (int i = 0; i < _lists.size(); i++) {
 			if (_lists.get(i).contains(word)) {
-				//_levelCounts.get(list).get(i).set(i, _levelCounts.get(list).get(i) + 1);
-				//replace with use of modifyLevelCount()
 				modifyLevelCount(list, word, i);
 			}
 		}
@@ -148,18 +181,11 @@ public class Statistics extends AbstractTableModel{
 	private void addWord(String word) {
 		_words.add(word);
 		_sortedWords.add(word);
-		sortWords();
-	}
-	
-	/**
-	 * Sorts words in the sortedWords arraylist
-	 */
-	private void sortWords() {
 		_sortedWords.sort(null);
 	}
 	
 	/**
-	 * Formats and returns the current stats
+	 * Formats and returns the current individual word stats
 	 * @return
 	 */
 	public ArrayList<String> getStats() {
@@ -183,7 +209,7 @@ public class Statistics extends AbstractTableModel{
 	}
 	
 	/**
-	 * Saves the current stats to the .stats file
+	 * Saves the current individual word stats to the .stats file
 	 */
 	private void saveStats() {
 		try {
@@ -207,7 +233,7 @@ public class Statistics extends AbstractTableModel{
 	}
 	
 	/**
-	 * Loads stats from the .stats file
+	 * Loads individual word stats from the .stats file
 	 */
 	private void loadStats() {
 		try {
@@ -247,6 +273,7 @@ public class Statistics extends AbstractTableModel{
 		saveStats();
 	}
 	
+	//Required methods for extending AbstractTableModel, so that Statistics can act as a TableModel for the JTable
 	@Override
 	public String getColumnName(int column) {
 		return columnNames[column];
@@ -265,6 +292,7 @@ public class Statistics extends AbstractTableModel{
 	@Override
 	public Object getValueAt(int rowIndex, int columnIndex) {
 		if (columnIndex > 0) {
+			// Uses the size of the inner list 
 			int count = _levelCounts.get(columnIndex - 1).get(rowIndex).size();
 			
 			return count + "/" + _lists.get(rowIndex).size();
