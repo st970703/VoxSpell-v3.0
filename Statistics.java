@@ -5,6 +5,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 
 import javax.swing.table.AbstractTableModel;
 
@@ -181,7 +182,7 @@ public class Statistics extends AbstractTableModel{
 	private void addWord(String word) {
 		_words.add(word);
 		_sortedWords.add(word);
-		_sortedWords.sort(null);
+		Collections.sort(_sortedWords);
 	}
 	
 	/**
