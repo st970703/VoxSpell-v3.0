@@ -151,6 +151,7 @@ public class SpellingAid implements ActionListener{
 		
 		window.add(overAllPanel);
 		
+		// add possible voice packages to check
 		voiceOptions.add("kal_diphone");
 		voiceOptions.add("akl_nz_jdt_diphone");
 		voiceOptions.add("rab_diphone");
@@ -160,8 +161,8 @@ public class SpellingAid implements ActionListener{
 		voiceOptions.add("cmu_us_clb_arctic");
 		voiceOptions.add("cmu_us_awb_cg");
 		
+		// Process the echo video using FFMPEG at the start to ensure there is enough time
 		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-
 			@Override
 			protected Void doInBackground() throws Exception {
 				File file = new File("big_buck_bunny_1_minute_aecho.avi");
@@ -174,6 +175,7 @@ public class SpellingAid implements ActionListener{
 		};
 		worker.execute();	
 		
+		// Check if the voice packages exists.
 		for (int i = 0; i < voiceOptions.size(); i++) {
 			if (!checkVoice(voiceOptions.get(i) ) ) {
 				voiceOptions.remove(i );
@@ -208,6 +210,7 @@ public class SpellingAid implements ActionListener{
 	
 	/**
 	 * Performs different actions, depending on what action was performed.
+	 * @editor Mike Lee
 	 */
 	@Override
 	public void actionPerformed(ActionEvent e) {
@@ -268,10 +271,16 @@ public class SpellingAid implements ActionListener{
 		}
 	}
 	
+	/**
+	 * getVoice() is a getter method to return the _voice field.
+	 */
 	public String getVoice() {
 		return _voice;
 	}
-
+	
+	/**
+	 * checkVoice(String voice) checks if the voice specified exists using a ProcessBuilder.
+	 */
 	private boolean checkVoice(String voice) {
 		try {
 			ProcessBuilder pb = new ProcessBuilder("bash", "-c", "locate " + voice);
@@ -320,6 +329,10 @@ public class SpellingAid implements ActionListener{
 		}
 	}
 	
+	/**
+	 * levelCompleted() prompts the user to select one of the following: "Move up a Spelling level", "Stay at current Spelling level", "Play reward video", "Play reward video with Echo Effect"
+	 * @editor Mike Lee
+	 */
 	public void levelCompleted() {
 		//create pop up to ask user either move up, stay at level, or play video
 		Object[] options = {"Move up a Spelling level", "Stay at current Spelling level", "Play reward video", "Play reward video with Echo Effect"};
@@ -351,6 +364,9 @@ public class SpellingAid implements ActionListener{
 		}
 	}
 	
+	/**
+	 * playVideo(final String videoName) is a private helper method that that creates an instance of the RewardMediaPlayer and switches to the video JPanel.
+	 */
 	private void playVideo(final String videoName) {
 		refreshVideoScreen();
 		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
@@ -367,23 +383,32 @@ public class SpellingAid implements ActionListener{
 				return null;
 			}
 			
-		};
-		
+		};	
 		worker.execute();
 		switchScreens("VIDEO");
 	}
 	
+	/**
+	 * refreshVideoScreen() is a private helper method that switches the current JPanel to the video JPanel.
+	 */
 	private void refreshVideoScreen() {
 		overAllPanel.remove(videoScreen);
 		videoScreen = new JPanel(new BorderLayout());
 		overAllPanel.add(videoScreen, "VIDEO");
 	}
 	
+	/**
+	 * switchScreens(String screen) switches the JPanel for performing a quiz or playing a video. 
+	 */
 	public void switchScreens(String screen) {
 		CardLayout cl = (CardLayout)(overAllPanel.getLayout());
 		cl.show(overAllPanel, screen);
 	}
 	
+	/**
+	 * Private helper method to delete the echo video.
+	 * @author Mike Lee
+	 */
 	private static void deleteEchoVideo() {
 		File videoFile = new File("./big_buck_bunny_1_minute_aecho.avi");		
 		if (videoFile.exists()) {
@@ -391,6 +416,9 @@ public class SpellingAid implements ActionListener{
 		}
 	}
 	
+	/**
+	 * Main static method to run the GUI.
+	 */
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(new Runnable() {
 
@@ -401,6 +429,8 @@ public class SpellingAid implements ActionListener{
 					
 		});
 		
+		// Delete the echo video when the user exits.
+		// @author Mike Lee
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 		      public void run() {
 		        System.out.println("Running Shutdown Hook");

@@ -12,7 +12,7 @@ import javax.swing.SwingWorker;
 /**
  * This class represents a quiz, taking words from the provided WordList object. 
  * @author wayne
- *
+ * @editor Mike Lee
  */
 public class Quiz implements ActionListener{
 	
@@ -180,7 +180,7 @@ public class Quiz implements ActionListener{
 		if (!isValidInput(e.getActionCommand())) {
 			JOptionPane.showMessageDialog(null, "Not a valid input! Please only use A-Z and a-z.", "Uh oh!", JOptionPane.ERROR_MESSAGE);
 		} else if (trimSpaces(e.getActionCommand()).isEmpty()) {
-			// do nuthin
+			// do nothing
 		} else {
 			String userWord = trimSpaces(e.getActionCommand());
 			_attempts++;
