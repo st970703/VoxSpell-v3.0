@@ -162,18 +162,7 @@ public class SpellingAid implements ActionListener{
 		voiceOptions.add("cmu_us_awb_cg");
 		
 		// Process the echo video using FFMPEG at the start to ensure there is enough time
-		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-			@Override
-			protected Void doInBackground() throws Exception {
-				File file = new File("big_buck_bunny_1_minute_aecho.avi");
-				if (!file.exists() && checkVoice("ffmpeg")) {
-					ProcessBuilder pb = new ProcessBuilder("bash", "-c", "ffmpeg -i big_buck_bunny_1_minute.avi -af aecho big_buck_bunny_1_minute_aecho.avi");
-					Process pro = pb.start();
-				}
-				return null;	
-			}
-		};
-		worker.execute();	
+		makeEchoVideo();
 		
 		// Check if the voice packages exists.
 		for (int i = 0; i < voiceOptions.size(); i++) {
@@ -414,6 +403,24 @@ public class SpellingAid implements ActionListener{
 		if (videoFile.exists()) {
 			videoFile.delete();
 		}
+	}
+	
+	/**
+	 * makeEchoVideo() is a private helper method to process the echo video in the background.
+	 */
+	private static void makeEchoVideo() {
+		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+			@Override
+			protected Void doInBackground() throws Exception {
+				File file = new File("big_buck_bunny_1_minute_aecho.avi");
+				if (!file.exists() && checkVoice("ffmpeg")) {
+					ProcessBuilder pb = new ProcessBuilder("bash", "-c", "ffmpeg -i big_buck_bunny_1_minute.avi -af aecho big_buck_bunny_1_minute_aecho.avi");
+					Process pro = pb.start();
+				}
+				return null;	
+			}
+		};
+		worker.execute();
 	}
 	
 	/**
