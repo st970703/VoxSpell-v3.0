@@ -151,9 +151,9 @@ public class SpellingAid implements ActionListener{
 		
 		window.add(overAllPanel);
 		
+		voiceOptions.add("kal_diphone");
 		voiceOptions.add("akl_nz_jdt_diphone");
 		voiceOptions.add("rab_diphone");
-		voiceOptions.add("kal_diphone");
 		voiceOptions.add("cmu_us_rms_arctic_clunits"); // Added _clunits so that it would work
 		voiceOptions.add("cmu_us_slt_arctic");
 		voiceOptions.add("cmu_us_bdl_arctic");
