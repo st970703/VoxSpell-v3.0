@@ -1,6 +1,8 @@
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
+import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -11,7 +13,10 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -27,6 +32,8 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
+import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.border.EtchedBorder;
 
 import com.sun.jna.Native;
@@ -44,6 +51,10 @@ public class SpellingAid implements ActionListener{
 
 	// many many Swing components
 	private JTextField inputText = new JTextField();
+	public void disableInputText() {
+		inputText.setEnabled(false);
+	}
+
 	private JButton newQuizBtn = new JButton("New Spelling Quiz");
 	private JButton reviewMistakesBtn = new JButton("Review Mistakes");
 	private JButton viewStatsBtn = new JButton("View Statistics");
@@ -52,6 +63,15 @@ public class SpellingAid implements ActionListener{
 	private JPanel menuBtns = new JPanel(new GridLayout(0, 1));
 	private JPanel inputArea = new JPanel(new GridLayout(0, 1));
 	private JTextArea previousInput = new JTextArea("Please select one of the options to the left.");
+	
+	public JTextArea getPreviousInput() {
+		return previousInput;
+	}
+
+	public void appendPreviousInput(String string) {
+		this.previousInput.append(string);
+	}
+
 	private JLabel instructions = new JLabel();
 	
 	private Statistics _stats;
@@ -66,6 +86,11 @@ public class SpellingAid implements ActionListener{
 	
 	//new stuff
 	private JButton relistenToWord = new JButton("Listen to the word again.");
+	
+	public void disableRelistenToWord() {
+		relistenToWord.setEnabled(false);
+	}
+	
 	private JPanel textAndButton = new JPanel();
 	private JScrollPane previousInputScroll;
 	
@@ -94,10 +119,14 @@ public class SpellingAid implements ActionListener{
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public SpellingAid() {
 		_voice = "kal_diphone";
-		window = new JFrame("Spelling Aid V2.0");
+		window = new JFrame("VoxSpell");
 		window.setSize(900, 500);
 		window.setDefaultCloseOperation(window.EXIT_ON_CLOSE);
+		relistenToWord.setBackground(Color.CYAN);
 		newQuizBtn.addActionListener(this);
+		newQuizBtn.setBackground(Color.GREEN);
+		clearStatsBtn.setBackground(Color.red);
+		clearStatsBtn.setToolTipText("Are you sure?");
 		reviewMistakesBtn.addActionListener(this);
 		viewStatsBtn.addActionListener(this);
 		clearStatsBtn.addActionListener(this);
@@ -134,6 +163,7 @@ public class SpellingAid implements ActionListener{
 		_failedWords = new WordList(new File(".failedWords"), QuizType.REVIEW);
 		_stats = Statistics.getInstance();
 		_statsTable = new JTable(_stats);
+		_statsTable.setEnabled(false);
 		_statsTable.getColumnModel().getColumn(4).setPreferredWidth(100);
 		_scrollPane = new JScrollPane(_statsTable);
 		_scrollPane.setPreferredSize(new Dimension(350, 300));
@@ -145,12 +175,17 @@ public class SpellingAid implements ActionListener{
 		statsPanel.add(statsTitle, BorderLayout.NORTH);
 		statsPanel.add(_scrollPane, BorderLayout.CENTER);
 		mainScreen.add(statsPanel, BorderLayout.EAST);
-		
+
+		newQuizBtn.setFont(newQuizBtn.getFont().deriveFont(Font.BOLD));
+		reviewMistakesBtn.setFont(reviewMistakesBtn.getFont().deriveFont(Font.BOLD));
+		viewStatsBtn.setFont(viewStatsBtn.getFont().deriveFont(Font.BOLD));
+		clearStatsBtn.setFont(clearStatsBtn.getFont().deriveFont(Font.BOLD));
+
 		overAllPanel.add(mainScreen, "MAIN");
 		overAllPanel.add(videoScreen, "VIDEO");
-		
+
 		window.add(overAllPanel);
-		
+
 		// add possible voice packages to check
 		voiceOptions.add("kal_diphone");
 		voiceOptions.add("akl_nz_jdt_diphone");
@@ -178,6 +213,8 @@ public class SpellingAid implements ActionListener{
 		voiceCBox.addActionListener(this);
 		textAndButton.add(voiceCBox);
 
+		voiceCBox.setToolTipText(voiceOptions.size()+" voices available");
+		
 		//Asking user for which spelling level they want to start with
 		boolean isAnswer = false;
 		while (!isAnswer) {
@@ -195,8 +232,19 @@ public class SpellingAid implements ActionListener{
 				}
 			}
 		}
-		
+
+		try {
+			UIManager.setLookAndFeel("com.sun.java.swing.plaf.nimbus.NimbusLookAndFeel");
+		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException
+				| UnsupportedLookAndFeelException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		SwingUtilities.updateComponentTreeUI(window);
 		window.setVisible(true);
+
+		//test
+		levelCompleted();
 	}
 	
 	/**
@@ -215,7 +263,8 @@ public class SpellingAid implements ActionListener{
 			inputText.addActionListener(_currentQuiz);
 			instructions.setText("Spell the word below and press Enter: ");
 			inputText.setEnabled(true);
-			previousInput.setText("");
+			relistenToWord.setEnabled(true);
+			previousInput.setText("Level "+_level+"\n\n");
 			inputText.requestFocusInWindow();
 			boolean status = _currentQuiz.sayNextWord(null);
 			if (!status) { inputText.setEnabled(false); };
@@ -226,14 +275,15 @@ public class SpellingAid implements ActionListener{
 			inputText.addActionListener(_currentQuiz);
 			instructions.setText("Spell the word below and press Enter: ");
 			inputText.setEnabled(true);
-			previousInput.setText("");
+			relistenToWord.setEnabled(true);
+			previousInput.setText("Review Mistakes from Level "+_level+"\n\n");
 			inputText.requestFocusInWindow();
 			boolean status = _currentQuiz.sayNextWord(null);
 			if (!status) { inputText.setEnabled(false); };
 		//} else if (action.equals(viewStatsBtn.getActionCommand())) {
 		} else if (action.equals(viewStatsBtn)) {
 			instructions.setText("");
-			previousInput.setText("");
+			previousInput.setText("View Statistics for Level "+_level+"\n\n");
 			inputText.setEnabled(false);
 			ArrayList<String> formattedStats = _stats.getStats();
 			
@@ -243,7 +293,7 @@ public class SpellingAid implements ActionListener{
 		//} else if (action.equals(clearStatsBtn.getActionCommand())) {
 		} else if (action.equals(clearStatsBtn)) {
 			instructions.setText("");
-			previousInput.setText("");
+			previousInput.setText("All Statistics Cleared!!");
 			inputText.setEnabled(false);
 			_stats.clearStats();
 			clearList(".failedlist");
@@ -325,7 +375,8 @@ public class SpellingAid implements ActionListener{
 	 */
 	public void levelCompleted() {
 		//create pop up to ask user either move up, stay at level, or play video
-		Object[] options = {"Move up a Spelling level", "Stay at current Spelling level", "Play reward video", "Play reward video with Echo Effect"};
+		Object[] options = {"Move up a Spelling level", "Stay at current Spelling level", "Play reward video", "Play reward video with Echo Effect", "Play Tic-Tac-Toe"};
+
 		while (true) {
 			int n = JOptionPane.showOptionDialog(window, "Please select an option:", "Congratulations!", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
 			
@@ -355,6 +406,18 @@ public class SpellingAid implements ActionListener{
 				} else if (!file.exists()) {
 					JOptionPane.showMessageDialog(null, "Cannot find video file.", "Video File missing!", JOptionPane.ERROR_MESSAGE);
 				}
+			} else if (n == 4){
+				//test
+				System.out.println("Play Tic-Tac-Toe");
+				NaughtsAndCrosses game = new NaughtsAndCrosses();
+				JFrame frame = new JFrame("TicTacToe");
+				
+				frame.add(game);
+				frame.pack();
+				
+				frame.setLocationRelativeTo(null);
+				frame.setVisible(true);
+				break;
 			}
 		}
 	}

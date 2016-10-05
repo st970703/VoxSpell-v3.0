@@ -1,2 +1,2 @@
-(voice_akl_nz_jdt_diphone)
-(SayText "my ... ... ... ... ")
+(voice_kal_diphone)
+(SayText "Quiz is finished. ... ... ... ... ")

@@ -76,17 +76,23 @@ public class Quiz implements ActionListener{
 	public boolean sayNextWord(String line) {
 		_wordCount++;
 		if (_wordCount <= _totalWords) {
+
 			_attempts = 0;
 
 			_previousWords.add(_wordCount - 1);
 			if (line == null) {
-				sayWord(_words.get(_wordCount - 1));
+				sayWord("please spell ... "+_words.get(_wordCount - 1));
+				
 			} else {
+				
 				sayWord(line + " " + _words.get(_wordCount - 1));
 			}
 			return true;
 		} else {
+			_parent.appendPreviousInput("Quiz is finished.\n");
 			sayWord("Quiz is finished.");
+			_parent.disableInputText();
+			_parent.disableRelistenToWord();
 			// call method in spellingaid to potentially shift up levels
 			if (_masteredWords >= 9 && _wordList.getQuizType() == QuizType.NEW) {
 				// call method from SpellingAid, which allows user to move up levels
@@ -95,7 +101,7 @@ public class Quiz implements ActionListener{
 			return false;
 		}
 	}
-	
+
 	/**
 	 * Repeats the word, allowing the user to relisten to it.
 	 */
@@ -193,6 +199,7 @@ public class Quiz implements ActionListener{
 					_masteredWords++;
 					_wordList.removeFromFailedList(userWord.toLowerCase());
 				}
+
 				sayNextWord(" ... ... Correct! ... "); // move onto the next word
 			} else { // if the user spells the word wrong
 				if (_attempts == 1) { // if this was their first attempt 
@@ -201,12 +208,14 @@ public class Quiz implements ActionListener{
 					if (_wordList.getQuizType().equals(QuizType.NEW)) { //if this is a new quiz, remove from/add to appropriate lists and add stats
 						_stats.addFailed(_words.get(_previousWords.get(_previousWords.size() - 1)));
 						_wordList.addToFailedList(_words.get(_previousWords.get(_previousWords.size() - 1)));
+						
 						sayNextWord("Incorrect. ... ");
 					} else { //if this is a review quiz, give user another chance to spell word, spelling it out for them
 						spellWord(); //however, don't remove from failedlist, even if they get it right, because they clearly need more practice
 						_stats.addFailed(_words.get(_previousWords.get(_previousWords.size() - 1)));
 					}
 				} else { //if they fail the extra try they get in review quizzes
+
 					sayNextWord(" ... ... Incorrect. ... ");
 				}
 			}
